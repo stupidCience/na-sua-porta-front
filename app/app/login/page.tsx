@@ -1,23 +1,48 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Card } from '@/components/Card';
-import { authAPI } from '@/lib/api';
+import { authAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { setUser, setToken } = useAuthStore();
+  const { user, setUser, setToken } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
   });
+
+  const getTargetByRole = (role: string, isVendor?: boolean) => {
+    if (role === 'VENDOR' || isVendor) return '/vendor/orders';
+    if (role === 'RESIDENT') return '/deliveries';
+    if (role === 'CONDOMINIUM_ADMIN') return '/admin';
+    return '/deliveries/available';
+  };
+
+  const forceNavigateByRole = (role: string, isVendor?: boolean) => {
+    const target = getTargetByRole(role, isVendor);
+    router.replace(target);
+
+    // Fallback: in some client states, App Router transition may not complete from /login.
+    setTimeout(() => {
+      if (window.location.pathname === '/login') {
+        window.location.replace(target);
+      }
+    }, 120);
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    forceNavigateByRole(user.role, user.isVendor);
+  }, [user, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -40,9 +65,10 @@ export default function LoginPage() {
       setToken(access_token);
       setUser(user);
 
-      router.push(user.role === 'RESIDENT' ? '/deliveries' : '/deliveries/available');
+      forceNavigateByRole(user.role, user.isVendor);
+      router.refresh();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao fazer login. Tente novamente.');
+      setError(getApiErrorMessage(err, 'Não conseguimos entrar na sua conta agora. Tente novamente.'));
     } finally {
       setLoading(false);
     }
@@ -97,7 +123,7 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <p className="text-xs text-gray-500 mb-3">Demo Credentials:</p>
+            <p className="text-xs text-gray-500 mb-3">Acesso de teste:</p>
             <div className="space-y-2 text-xs">
               <div className="bg-gray-50 p-2 rounded">
                 <p className="font-semibold">Morador:</p>

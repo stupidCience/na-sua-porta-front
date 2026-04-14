@@ -14,8 +14,10 @@ export default function Home() {
   useEffect(() => {
     const token = localStorage.getItem('access_token');
     if (token && user) {
-      if (user.role === 'RESIDENT') {
-        router.push('/deliveries');
+      if (user.role === 'VENDOR' || user.isVendor) {
+        router.push('/vendor/orders');
+      } else if (user.role === 'CONDOMINIUM_ADMIN') {
+        router.push('/admin');
       } else {
         router.push('/deliveries/available');
       }
@@ -32,10 +34,13 @@ export default function Home() {
         <p className="text-gray-500 mb-8">
           Rapidez, facilidade e confiabilidade em cada entrega
         </p>
+        <Link href="/demo">
+          <Button size="lg">Solicitar demonstração</Button>
+        </Link>
       </div>
 
       {!isAuthenticated ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-2xl w-full px-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl w-full px-4">
           {/* Resident Card */}
           <Card>
             <div className="text-center">
@@ -71,6 +76,29 @@ export default function Home() {
                 <Link href="/register?type=delivery" className="block">
                   <Button fullWidth variant="primary" size="lg">
                     Cadastro Entregador
+                  </Button>
+                </Link>
+                <Link href="/login" className="block">
+                  <Button fullWidth variant="secondary" size="lg">
+                    Já tem conta?
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+
+          {/* Condominium Admin Card */}
+          <Card>
+            <div className="text-center">
+              <div className="text-4xl mb-4">🏢</div>
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Administrador</h2>
+              <p className="text-gray-600 mb-6">
+                Gerencie fluxo, demanda e performance das entregas do condomínio
+              </p>
+              <div className="space-y-3">
+                <Link href="/register?type=admin" className="block">
+                  <Button fullWidth variant="primary" size="lg">
+                    Cadastro Admin
                   </Button>
                 </Link>
                 <Link href="/login" className="block">

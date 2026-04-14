@@ -8,16 +8,40 @@ import { Card } from '@/components/Card';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Avatar } from '@/components/Avatar';
 import { StarRating } from '@/components/StarRating';
-import { deliveriesAPI } from '@/lib/api';
+import { ProgressStepper } from '@/components/ProgressStepper';
+import { deliveriesAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { useSocket } from '@/lib/useSocket';
 import { useToastStore } from '@/components/Toast';
 import type { Delivery } from '@/lib/store';
 
+const deliverySteps = [
+  { key: 'REQUESTED', label: 'Solicitado', icon: '1' },
+  { key: 'ACCEPTED', label: 'Aceito', icon: '2' },
+  { key: 'PICKED_UP', label: 'Coletado', icon: '3' },
+  { key: 'DELIVERED', label: 'Entregue', icon: '4' },
+];
+
+const inferOrderStatus = (delivery: Delivery) => {
+  if (delivery.order?.status) return delivery.order.status;
+  if (delivery.status === 'DELIVERED') return 'COMPLETED';
+  if (delivery.status === 'PICKED_UP') return 'SENT';
+  if (delivery.status === 'ACCEPTED') return 'ACCEPTED';
+  return 'PENDING';
+};
+
+const orderSteps = [
+  { key: 'PENDING', label: 'Pendente', icon: '1' },
+  { key: 'ACCEPTED', label: 'Aceito', icon: '2' },
+  { key: 'READY', label: 'Pronto', icon: '3' },
+  { key: 'SENT', label: 'Enviado', icon: '4' },
+  { key: 'COMPLETED', label: 'Concluído', icon: '5' },
+];
+
 export default function DeliveriesPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { on, off } = useSocket(user?.id);
+  const { user, hasHydrated } = useAuthStore();
+  const { on, off, connectionStatus } = useSocket(user?.id, user?.role);
   const { addToast } = useToastStore();
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -28,20 +52,24 @@ export default function DeliveriesPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
     if (!user) {
       router.push('/login');
       return;
     }
     loadDeliveries();
-  }, [user, router]);
+  }, [user, router, hasHydrated]);
 
   const loadDeliveries = async () => {
     try {
       setLoading(true);
       const response = await deliveriesAPI.getAll();
       setDeliveries(response.data);
-    } catch (err) {
-      setError('Erro ao carregar pedidos');
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Não conseguimos carregar seus pedidos agora.'));
     } finally {
       setLoading(false);
     }
@@ -56,7 +84,7 @@ export default function DeliveriesPage() {
       setRatingId(null);
       addToast('Obrigado pela avaliação!', 'success');
     } catch (err: any) {
-      addToast(err.response?.data?.message || 'Erro ao avaliar', 'error');
+      addToast(getApiErrorMessage(err, 'Não conseguimos salvar sua avaliação agora.'), 'error');
     }
   };
 
@@ -67,7 +95,7 @@ export default function DeliveriesPage() {
       setDeliveries((prev) => prev.filter((d) => d.id !== deliveryId));
       addToast('Pedido cancelado com sucesso.', 'success');
     } catch (err: any) {
-      addToast(err.response?.data?.message || 'Não foi possível cancelar o pedido', 'error');
+      addToast(getApiErrorMessage(err, 'Não conseguimos cancelar seu pedido agora.'), 'error');
     } finally {
       setCancellingId(null);
     }
@@ -95,11 +123,11 @@ export default function DeliveriesPage() {
       setHighlightedId(delivery.id);
       setTimeout(() => setHighlightedId((current) => (current === delivery.id ? null : current)), 1800);
       if (delivery.status === 'ACCEPTED' && delivery.deliveryPerson) {
-        addToast(`${delivery.deliveryPerson.name} aceitou seu pedido!`, 'success');
+        addToast(`🚀 ${delivery.deliveryPerson.name} aceitou seu pedido!`, 'success');
       } else if (delivery.status === 'PICKED_UP') {
-        addToast('Seu pacote foi coletado e está a caminho!', 'info');
+        addToast('🚴 Seu pedido está a caminho!', 'info');
       } else if (delivery.status === 'DELIVERED') {
-        addToast('Entrega concluída! Seu pacote chegou.', 'success');
+        addToast('🎉 Entrega finalizada! Seu pacote chegou.', 'success');
       }
     };
 
@@ -138,23 +166,32 @@ export default function DeliveriesPage() {
       ? deliveries.filter((d) => d.status !== 'DELIVERED')
       : deliveries;
 
+  const hasAnyPreviousOrder = deliveries.length > 0;
+
   return (
     <div className="pb-24 md:pb-0">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800">Meus Pedidos</h1>
+          <h1 className="text-3xl font-bold text-gray-800">Minhas Entregas</h1>
           <p className="text-gray-500 mt-1">Acompanhe suas entregas em tempo real</p>
         </div>
         <Link href="/deliveries/new" className="hidden md:block">
-          <Button size="lg">Pedir entrega 🚀</Button>
+          <Button size="lg">🚀 Solicitar coleta</Button>
         </Link>
       </div>
 
       {visibleDeliveries.some((d) => d.status === 'REQUESTED') && (
         <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
-          Estamos procurando um entregador para seu pedido. Você receberá uma atualização em instantes.
+          Procurando entregador... Você receberá atualização em instantes.
         </div>
       )}
+
+      {connectionStatus === 'reconnecting' && (
+        <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+          Reconectando ao tempo real. Estamos atualizando tudo para você.
+        </div>
+      )}
+
 
       {visibleDeliveries.some((d) => d.status === 'ACCEPTED' && d.deliveryPerson?.name) && (
         <div className="mb-6 p-3 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 text-sm">
@@ -172,10 +209,18 @@ export default function DeliveriesPage() {
         <Card>
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📦</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhum pedido em aberto</h3>
-            <p className="text-gray-500 mb-6">Pedidos concluídos ficam disponíveis na aba de histórico</p>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              {hasAnyPreviousOrder ? 'Nenhum pedido em aberto' : 'Nenhuma entrega ainda'}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {hasAnyPreviousOrder
+                ? 'Você já tem pedidos no histórico. Quando criar um novo, ele aparecerá aqui.'
+                : 'Comece seu uso com um primeiro pedido em poucos segundos'}
+            </p>
             <Link href="/deliveries/new">
-              <Button size="lg">Pedir entrega 🚀</Button>
+              <Button size="lg">
+                {hasAnyPreviousOrder ? '🚀 Solicitar nova coleta' : '🚀 Fazer primeira coleta'}
+              </Button>
             </Link>
           </div>
         </Card>
@@ -203,6 +248,28 @@ export default function DeliveriesPage() {
                         {delivery.description}
                       </p>
                     )}
+
+                    <ProgressStepper
+                      title="Etapas da entrega"
+                      steps={deliverySteps}
+                      currentKey={delivery.status}
+                    />
+
+                    {delivery.type === 'MARKETPLACE' && (
+                      <>
+                        <ProgressStepper
+                          title="Etapas do pedido"
+                          steps={orderSteps}
+                          currentKey={delivery.status === 'DELIVERED' ? 'COMPLETED' : inferOrderStatus(delivery)}
+                        />
+                        <p className="text-xs font-semibold text-gray-700">
+                          Pagamento:{' '}
+                          <span className={`rounded-full px-2 py-0.5 ${delivery.order?.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
+                            {delivery.order?.paymentStatus === 'PAID' ? '✅ Pago' : '⏳ Pendente'}
+                          </span>
+                        </p>
+                      </>
+                    )}
                     {delivery.deliveryPerson && (
                       <div className="flex items-center gap-2 mt-2 p-2 bg-blue-50 rounded-lg">
                         <Avatar name={delivery.deliveryPerson.name} size="sm" />
@@ -220,6 +287,20 @@ export default function DeliveriesPage() {
                         Estamos procurando um entregador para você...
                       </p>
                     )}
+
+                    {user?.role === 'RESIDENT' &&
+                      ['ACCEPTED', 'PICKED_UP'].includes(delivery.status) &&
+                      delivery.deliveryCode && (
+                        <div className="mt-3 p-3 rounded-lg border border-emerald-200 bg-emerald-50">
+                          <p className="text-xs text-emerald-700 uppercase tracking-wide">Código de recebimento</p>
+                          <p className="text-2xl font-bold text-emerald-800 tracking-[0.2em]">
+                            {delivery.deliveryCode}
+                          </p>
+                          <p className="text-xs text-emerald-700 mt-1">
+                            Informe este código ao entregador no momento da entrega.
+                          </p>
+                        </div>
+                      )}
 
                     {user?.role === 'RESIDENT' && ['REQUESTED', 'ACCEPTED'].includes(delivery.status) && (
                       <div className="mt-3">
@@ -274,7 +355,7 @@ export default function DeliveriesPage() {
       )}
 
       <Link href="/deliveries/new" className="md:hidden fixed bottom-5 right-4 z-40">
-        <Button size="lg" className="shadow-lg">Pedir entrega 🚀</Button>
+        <Button size="lg" className="shadow-lg">🚀 Solicitar coleta</Button>
       </Link>
     </div>
   );

@@ -18,21 +18,21 @@ export function Button({
   ...props
 }: ButtonProps) {
   const baseClasses =
-    'font-semibold rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
+    'font-extrabold rounded-2xl shadow-sm transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variantClasses = {
     primary:
-      'bg-amber-500 text-white hover:bg-amber-600 active:bg-amber-700',
+      'button-primary',
     secondary:
-      'bg-gray-200 text-gray-800 hover:bg-gray-300 active:bg-gray-400',
+      'bg-black text-[var(--color-primary)] border-2 border-black hover:bg-gray-900 active:bg-black',
     danger:
-      'bg-red-600 text-white hover:bg-red-700 active:bg-red-800',
+      'bg-red-600 text-white border-2 border-red-700 hover:bg-red-700 active:bg-red-800',
   };
 
   const sizeClasses = {
-    sm: 'px-3 py-1 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg',
+    sm: 'px-4 py-2 text-sm',
+    md: 'px-5 py-3 text-base',
+    lg: 'px-7 py-3.5 text-lg',
   };
 
   return (

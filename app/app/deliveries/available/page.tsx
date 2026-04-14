@@ -5,16 +5,24 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Avatar } from '@/components/Avatar';
-import { deliveriesAPI } from '@/lib/api';
+import { ProgressStepper } from '@/components/ProgressStepper';
+import { deliveriesAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { useSocket } from '@/lib/useSocket';
 import { useToastStore } from '@/components/Toast';
 import type { Delivery } from '@/lib/store';
 
+const deliverySteps = [
+  { key: 'REQUESTED', label: 'Solicitado', icon: '1' },
+  { key: 'ACCEPTED', label: 'Aceito', icon: '2' },
+  { key: 'PICKED_UP', label: 'Coletado', icon: '3' },
+  { key: 'DELIVERED', label: 'Entregue', icon: '4' },
+];
+
 export default function AvailableDeliveriesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { on, off } = useSocket(user?.id);
+  const { on, off, connectionStatus, onlineDeliveryPeople } = useSocket(user?.id, user?.role);
   const { addToast } = useToastStore();
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -35,8 +43,8 @@ export default function AvailableDeliveriesPage() {
       setLoading(true);
       const response = await deliveriesAPI.getAvailable();
       setDeliveries(response.data);
-    } catch (err) {
-      setError('Erro ao carregar pedidos disponíveis');
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Não conseguimos carregar os pedidos disponíveis agora.'));
     } finally {
       setLoading(false);
     }
@@ -47,9 +55,9 @@ export default function AvailableDeliveriesPage() {
       setAccepting(deliveryId);
       await deliveriesAPI.accept(deliveryId);
       setDeliveries((prev) => prev.filter((d) => d.id !== deliveryId));
-      addToast('Pedido aceito! Vá até a portaria para coletar.', 'success');
+      addToast('🚀 Coleta aceita! Vá até a origem para buscar o pacote.', 'success');
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Erro ao aceitar pedido';
+      const msg = getApiErrorMessage(err, 'Não conseguimos aceitar esta entrega agora.');
       setError(msg);
       addToast(msg, 'error');
     } finally {
@@ -94,9 +102,16 @@ export default function AvailableDeliveriesPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Pedidos Disponíveis</h1>
-        <p className="text-gray-500 mt-1">Aceite um pedido e ganhe fazendo entregas</p>
+        <h1 className="text-3xl font-bold text-gray-800">Coletas disponíveis</h1>
+        <p className="text-gray-500 mt-1">Aceite uma coleta e ganhe fazendo entregas</p>
+        <p className="text-sm text-emerald-700 mt-2">Entregadores online: {onlineDeliveryPeople}</p>
       </div>
+
+      {connectionStatus === 'reconnecting' && (
+        <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+          Reconectando ao tempo real. Novos pedidos aparecerão em instantes.
+        </div>
+      )}
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -108,7 +123,7 @@ export default function AvailableDeliveriesPage() {
         <Card>
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📭</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhum pedido no momento</h3>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhum pedido disponível no momento</h3>
             <p className="text-gray-500">Novos pedidos aparecerão aqui automaticamente</p>
             <div className="mt-4 flex items-center justify-center gap-2 text-sm text-amber-600">
               <span className="relative flex h-2 w-2">
@@ -116,6 +131,9 @@ export default function AvailableDeliveriesPage() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
               </span>
               Escutando novos pedidos em tempo real...
+            </div>
+            <div className="mt-6">
+              <Button variant="secondary" onClick={loadDeliveries}>🔄 Atualizar lista</Button>
             </div>
           </div>
         </Card>
@@ -131,7 +149,7 @@ export default function AvailableDeliveriesPage() {
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
                     </span>
                     <span className="text-sm font-medium text-yellow-700 bg-yellow-50 px-2 py-0.5 rounded">
-                      Novo pedido
+                      {delivery.type === 'MARKETPLACE' ? '🛒 Pedido marketplace' : '📦 Portaria'}
                     </span>
                   </div>
 
@@ -156,6 +174,32 @@ export default function AvailableDeliveriesPage() {
                       <p className="text-gray-700">📦 {delivery.description}</p>
                     )}
 
+                    <p className="text-sm text-gray-700">
+                      <span className="text-gray-500">Origem:</span>{' '}
+                      {delivery.pickupOrigin || (delivery.type === 'MARKETPLACE' ? 'Comércio parceiro' : 'Portaria')}
+                    </p>
+
+                    {delivery.order && (
+                      <p className="text-xs text-gray-500">
+                        Pedido #{delivery.order.id.slice(0, 8)} · Pagamento {delivery.order.paymentStatus === 'PAID' ? 'pago' : 'pendente'}
+                      </p>
+                    )}
+
+                    <ProgressStepper
+                      title="Etapa atual"
+                      steps={deliverySteps}
+                      currentKey={delivery.status}
+                    />
+
+                    {delivery.order && (
+                      <p className="text-xs font-semibold text-gray-700">
+                        Status de pagamento:{' '}
+                        <span className={`rounded-full px-2 py-0.5 ${delivery.order.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
+                          {delivery.order.paymentStatus === 'PAID' ? '✅ Pago' : '⏳ Pendente'}
+                        </span>
+                      </p>
+                    )}
+
                     {delivery.notes && (
                       <p className="text-sm text-gray-500 italic">💬 {delivery.notes}</p>
                     )}
@@ -173,7 +217,7 @@ export default function AvailableDeliveriesPage() {
                     loading={accepting === delivery.id}
                     disabled={accepting !== null}
                   >
-                    Aceitar 🚀
+                    ✅ Aceitar entrega
                   </Button>
                 </div>
               </div>

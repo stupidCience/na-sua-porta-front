@@ -39,10 +39,10 @@ export const useToastStore = create<ToastStore>((set) => ({
 }));
 
 const typeStyles: Record<ToastType, string> = {
-  success: 'bg-green-50 border-green-400 text-green-800',
-  error: 'bg-red-50 border-red-400 text-red-800',
-  info: 'bg-blue-50 border-blue-400 text-blue-800',
-  warning: 'bg-amber-50 border-amber-400 text-amber-800',
+  success: 'bg-emerald-50 border-emerald-500 text-emerald-900',
+  error: 'bg-red-50 border-red-500 text-red-900',
+  info: 'bg-black border-black text-amber-300',
+  warning: 'bg-amber-50 border-amber-500 text-amber-900',
 };
 
 const typeIcons: Record<ToastType, string> = {
@@ -61,13 +61,13 @@ function ToastItem({ toast, onClose }: { toast: ToastItem; onClose: () => void }
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg transition-all duration-300 ${
-        visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 shadow-xl transition-all duration-300 ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'
       } ${typeStyles[toast.type]}`}
     >
       <span className="text-lg">{typeIcons[toast.type]}</span>
       <p className="flex-1 text-sm font-medium">{toast.message}</p>
-      <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">
+      <button onClick={onClose} className="text-current/60 hover:text-current text-lg leading-none">
         &times;
       </button>
     </div>

@@ -1,25 +1,36 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'RESIDENT' | 'DELIVERY_PERSON';
+  role: 'RESIDENT' | 'DELIVERY_PERSON' | 'VENDOR' | 'CONDOMINIUM_ADMIN';
+  isVendor?: boolean;
+  vendorId?: string | null;
   condominiumId?: string;
+  condominiumName?: string | null;
   apartment?: string;
   block?: string;
   phone?: string;
+  vehicleInfo?: string | null;
+  personalDocument?: string | null;
 }
 
 export interface Delivery {
   id: string;
   status: 'REQUESTED' | 'ACCEPTED' | 'PICKED_UP' | 'DELIVERED';
+  type?: 'PORTARIA' | 'MARKETPLACE';
   residentId: string;
   apartment: string;
   block: string;
+  pickupOrigin?: string;
+  orderId?: string;
   deliveryPersonId?: string;
   description?: string;
   notes?: string;
+  deliveryCode?: string;
+  deliveryCodeGeneratedAt?: string;
   rating?: number;
   ratingComment?: string;
   createdAt: string;
@@ -37,14 +48,24 @@ export interface Delivery {
     email: string;
     phone?: string;
   };
+  order?: {
+    id: string;
+    source?: string;
+    status?: 'PENDING' | 'ACCEPTED' | 'READY' | 'SENT' | 'COMPLETED' | 'CANCELLED';
+    paymentStatus?: 'PENDING' | 'PAID';
+    totalAmount?: number;
+    pickupCode?: string | null;
+  };
 }
 
 interface AuthStore {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  hasHydrated: boolean;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
+  setHasHydrated: (hasHydrated: boolean) => void;
   logout: () => void;
 }
 
@@ -63,29 +84,51 @@ interface DeliveryStore {
   setError: (error: string | null) => void;
 }
 
-export const useAuthStore = create<AuthStore>((set) => ({
-  user: null,
-  token: null,
-  isAuthenticated: false,
-
-  setUser: (user) =>
-    set({
-      user,
-      isAuthenticated: !!user,
-    }),
-
-  setToken: (token) =>
-    set({
-      token,
-    }),
-
-  logout: () =>
-    set({
+export const useAuthStore = create<AuthStore>()(
+  persist(
+    (set) => ({
       user: null,
       token: null,
       isAuthenticated: false,
+      hasHydrated: false,
+
+      setUser: (user) =>
+        set({
+          user,
+          isAuthenticated: !!user,
+        }),
+
+      setToken: (token) =>
+        set({
+          token,
+        }),
+
+      setHasHydrated: (hasHydrated) =>
+        set({
+          hasHydrated,
+        }),
+
+      logout: () =>
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+        }),
     }),
-}));
+    {
+      name: 'nsp-auth',
+      storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        user: state.user,
+        token: state.token,
+        isAuthenticated: state.isAuthenticated,
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
+    },
+  ),
+);
 
 export const useDeliveryStore = create<DeliveryStore>((set) => ({
   deliveries: [],

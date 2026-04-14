@@ -1,25 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* Food/Delivery Brand Colors */
-  --primary: #F59E0B;
-  --primary-dark: #D97706;
-  --secondary: #EF4444;
-  --accent: #92400E;
-  --success: #10B981;
-  --gray-dark: #1F2937;
-  --gray-light: #6B7280;
+  --background: #fff8ef;
+  --surface: #fffdf9;
+  --foreground: #1d1a16;
+  --primary: #ffb703;
+  --primary-dark: #fb8500;
+  --secondary: #12263a;
+  --accent: #0f766e;
+  --danger: #b91c1c;
+  --success: #15803d;
+  --gray-dark: #334155;
+  --gray-light: #64748b;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
   --color-secondary: var(--secondary);
   --color-accent: var(--accent);
+  --color-danger: var(--danger);
   --color-success: var(--success);
   --color-gray-dark: var(--gray-dark);
   --color-gray-light: var(--gray-light);
@@ -27,15 +30,60 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  background-image:
+    radial-gradient(circle at 15% -10%, rgba(251, 133, 0, 0.16), transparent 35%),
+    radial-gradient(circle at 85% 0%, rgba(15, 118, 110, 0.15), transparent 32%),
+    linear-gradient(180deg, #fff8ef 0%, #fffdf9 100%);
+}
+
+main {
+  animation: page-enter 320ms ease-out;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.button-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: #1f1300;
+  border: 2px solid #7c2d12;
+  border-radius: 1rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgba(251, 133, 0, 0.25);
+  transition: transform 160ms ease, filter 160ms ease, box-shadow 160ms ease;
+}
+
+.button-primary:hover {
+  transform: translateY(-1px) scale(1.015);
+  filter: brightness(1.03);
+  box-shadow: 0 12px 20px rgba(251, 133, 0, 0.35);
+}
+
+.button-primary:active {
+  transform: scale(0.985);
+}
+
+.card-default {
+  background: linear-gradient(180deg, var(--color-surface) 0%, #ffffff 100%);
+  border: 1px solid #eadfd2;
+  border-radius: 1rem;
+  box-shadow: 0 10px 24px rgba(41, 37, 36, 0.09);
+}
+
+.badge-status {
+  border-radius: 9999px;
+  border-width: 1px;
+  font-weight: 700;
 }

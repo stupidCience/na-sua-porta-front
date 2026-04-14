@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Sora, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { ToastContainer } from "@/components/Toast";
 
-const geistSans = Geist({
+const geistSans = Sora({
   variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = Space_Mono({
   variable: "--font-geist-mono",
+  weight: ["400", "700"],
   subsets: ["latin"],
 });
 

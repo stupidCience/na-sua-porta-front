@@ -2,31 +2,48 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Card } from '@/components/Card';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Avatar } from '@/components/Avatar';
 import { StarRating } from '@/components/StarRating';
-import { deliveriesAPI } from '@/lib/api';
+import { Button } from '@/components/Button';
+import { ProgressStepper } from '@/components/ProgressStepper';
+import { deliveriesAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { useSocket } from '@/lib/useSocket';
+import { useToastStore } from '@/components/Toast';
 import type { Delivery } from '@/lib/store';
+
+const deliverySteps = [
+  { key: 'REQUESTED', label: 'Solicitado', icon: '1' },
+  { key: 'ACCEPTED', label: 'Aceito', icon: '2' },
+  { key: 'PICKED_UP', label: 'Coletado', icon: '3' },
+  { key: 'DELIVERED', label: 'Entregue', icon: '4' },
+];
 
 export default function HistoryPage() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { on, off } = useSocket(user?.id);
+  const { user, hasHydrated } = useAuthStore();
+  const { on, off, connectionStatus } = useSocket(user?.id, user?.role);
+  const { addToast } = useToastStore();
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [ratingId, setRatingId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
     if (!user) {
       router.push('/login');
       return;
     }
     loadHistory();
-  }, [user, router]);
+  }, [user, router, hasHydrated]);
 
   useEffect(() => {
     if (!user) return;
@@ -66,10 +83,21 @@ export default function HistoryPage() {
       setLoading(true);
       const response = await deliveriesAPI.getHistory();
       setDeliveries(response.data);
-    } catch (err) {
-      setError('Erro ao carregar histórico');
+    } catch (err: any) {
+      setError(getApiErrorMessage(err, 'Não conseguimos carregar seu histórico agora.'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRate = async (deliveryId: string, rating: number) => {
+    try {
+      const response = await deliveriesAPI.rate(deliveryId, rating);
+      setDeliveries((prev) => prev.map((d) => (d.id === deliveryId ? response.data : d)));
+      setRatingId(null);
+      addToast('Obrigado pela avaliação!', 'success');
+    } catch (err: any) {
+      addToast(getApiErrorMessage(err, 'Não conseguimos registrar sua avaliação agora.'), 'error');
     }
   };
 
@@ -87,7 +115,7 @@ export default function HistoryPage() {
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
           <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent mb-4"></div>
-          <p className="text-gray-600">Carregando histórico...</p>
+          <p className="text-gray-600">Carregando seu histórico...</p>
         </div>
       </div>
     );
@@ -102,6 +130,12 @@ export default function HistoryPage() {
         </p>
       </div>
 
+      {connectionStatus === 'reconnecting' && (
+        <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+          Reconectando ao tempo real. Seus dados serão atualizados em instantes.
+        </div>
+      )}
+
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
           {error}
@@ -113,7 +147,12 @@ export default function HistoryPage() {
           <div className="text-center py-16">
             <div className="text-5xl mb-4">📜</div>
             <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhuma entrega concluída</h3>
-            <p className="text-gray-500">Suas entregas finalizadas aparecerão aqui</p>
+            <p className="text-gray-500 mb-6">Quando você finalizar entregas, o histórico aparecerá aqui.</p>
+            <Link href={user?.role === 'RESIDENT' ? '/deliveries/new' : '/deliveries/available'}>
+              <Button size="lg">
+                {user?.role === 'RESIDENT' ? '🚀 Fazer primeiro pedido' : '✅ Aceitar entrega'}
+              </Button>
+            </Link>
           </div>
         </Card>
       ) : (
@@ -136,6 +175,12 @@ export default function HistoryPage() {
                     {delivery.description && (
                       <p className="text-gray-600 text-sm">📦 {delivery.description}</p>
                     )}
+
+                    <ProgressStepper
+                      title="Fluxo concluído"
+                      steps={deliverySteps}
+                      currentKey="DELIVERED"
+                    />
 
                     <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-gray-100">
                       {user?.role === 'RESIDENT' && delivery.deliveryPerson && (
@@ -170,6 +215,25 @@ export default function HistoryPage() {
 
                       {delivery.rating && (
                         <StarRating rating={delivery.rating} readonly size="sm" />
+                      )}
+
+                      {user?.role === 'RESIDENT' && !delivery.rating && (
+                        <div className="text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded">
+                          <p className="font-medium">Entrega finalizada 🎉</p>
+                          {ratingId === delivery.id ? (
+                            <div className="mt-2">
+                              <p className="text-xs text-gray-600 mb-1">Avalie esta entrega</p>
+                              <StarRating onRate={(r) => handleRate(delivery.id, r)} size="md" />
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setRatingId(delivery.id)}
+                              className="text-amber-700 font-semibold hover:text-amber-800"
+                            >
+                              Avaliar
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

@@ -1,18 +1,23 @@
 'use client';
 
 import React, { useState } from 'react';
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { Card } from '@/components/Card';
-import { authAPI } from '@/lib/api';
+import { authAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import { formatPersonalDocument } from '@/lib/documentMasks';
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isDelivery = searchParams.get('type') === 'delivery';
+  const type = searchParams.get('type');
+  const isDelivery = type === 'delivery';
+  const isAdmin = type === 'admin';
+  const isVendor = type === 'vendor';
   const { setUser, setToken } = useAuthStore();
 
   const [loading, setLoading] = useState(false);
@@ -23,13 +28,24 @@ export default function RegisterPage() {
     name: '',
     apartment: '',
     block: '',
+    personalDocument: '',
+    condominiumId: '',
+    condominiumName: '',
+    vendorName: '',
+    vendorCategory: '',
+    vendorDescription: '',
+    vendorContactPhone: '',
+    vendorCnpj: '',
+    vendorCnae: '',
+    vendorLegalDocument: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const nextValue = name === 'personalDocument' ? formatPersonalDocument(value) : value;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
   };
 
@@ -39,14 +55,42 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = isDelivery
-        ? await authAPI.registerDelivery(formData.email, formData.password, formData.name)
+      const response = isAdmin
+        ? await authAPI.registerAdmin(
+            formData.email,
+            formData.password,
+            formData.name,
+            formData.condominiumName,
+          )
+        : isVendor
+        ? await authAPI.registerVendor(
+            formData.email,
+            formData.password,
+            formData.name,
+            formData.condominiumId,
+            formData.vendorName,
+            formData.vendorCnpj,
+            formData.vendorCnae,
+            formData.vendorLegalDocument,
+            formData.vendorCategory || undefined,
+            formData.vendorDescription || undefined,
+            formData.vendorContactPhone || undefined,
+          )
+        : isDelivery
+        ? await authAPI.registerDelivery(
+            formData.email,
+            formData.password,
+            formData.name,
+            formData.condominiumId,
+            formData.personalDocument,
+          )
         : await authAPI.register(
             formData.email,
             formData.password,
             formData.name,
             formData.apartment,
             formData.block,
+            formData.condominiumId,
           );
 
       const { access_token, user } = response.data;
@@ -55,9 +99,17 @@ export default function RegisterPage() {
       setToken(access_token);
       setUser(user);
 
-      router.push(user.role === 'RESIDENT' ? '/deliveries' : '/deliveries/available');
+      if (user.role === 'VENDOR' || user.isVendor) {
+        router.push('/vendor/orders');
+      } else if (user.role === 'RESIDENT') {
+        router.push('/deliveries');
+      } else if (user.role === 'CONDOMINIUM_ADMIN') {
+        router.push('/admin');
+      } else {
+        router.push('/deliveries/available');
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Erro ao registrar. Tente novamente.');
+      setError(getApiErrorMessage(err, 'Não conseguimos concluir seu cadastro agora. Tente novamente.'));
     } finally {
       setLoading(false);
     }
@@ -70,7 +122,13 @@ export default function RegisterPage() {
           <div className="text-center mb-6">
             <h1 className="text-3xl font-bold text-amber-600 mb-2">🍕 Na Sua Porta</h1>
             <p className="text-gray-600">
-              {isDelivery ? 'Cadastro de Entregador' : 'Cadastro de Morador'}
+              {isAdmin
+                ? 'Cadastro do Condomínio'
+                : isVendor
+                ? 'Cadastro de Vendedor'
+                : isDelivery
+                ? 'Cadastro de Entregador'
+                : 'Cadastro de Morador'}
             </p>
           </div>
 
@@ -80,20 +138,34 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <div className="mb-4 flex gap-2">
-            <Link href="/register" className={`flex-1 py-2 px-3 text-center rounded-lg font-medium transition-all ${
-              !isDelivery
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <Link href="/register" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+              !isDelivery && !isAdmin && !isVendor
                 ? 'bg-amber-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}>
               Morador
             </Link>
-            <Link href="/register?type=delivery" className={`flex-1 py-2 px-3 text-center rounded-lg font-medium transition-all ${
+            <Link href="/register?type=delivery" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
               isDelivery
                 ? 'bg-amber-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}>
               Entregador
+            </Link>
+            <Link href="/register?type=vendor" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+              isVendor
+                ? 'bg-amber-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}>
+              Vendedor
+            </Link>
+            <Link href="/register?type=admin" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+              isAdmin
+                ? 'bg-amber-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            }`}>
+              Condomínio
             </Link>
           </div>
 
@@ -128,7 +200,114 @@ export default function RegisterPage() {
               required
             />
 
-            {!isDelivery && (
+            {!isAdmin && (
+              <Input
+                label={isDelivery || isVendor ? 'ID do condomínio' : 'ID do condomínio (opcional)'}
+                type="text"
+                name="condominiumId"
+                value={formData.condominiumId}
+                onChange={handleChange}
+                placeholder="cmx..."
+                required={isDelivery || isVendor}
+              />
+            )}
+
+            {isDelivery && (
+              <Input
+                label="Documento pessoal (RG/CPF)"
+                type="text"
+                name="personalDocument"
+                value={formData.personalDocument}
+                onChange={handleChange}
+                placeholder="Digite seu RG ou CPF"
+                required
+              />
+            )}
+
+            {isAdmin && (
+              <Input
+                label="Nome do condomínio"
+                type="text"
+                name="condominiumName"
+                value={formData.condominiumName}
+                onChange={handleChange}
+                placeholder="Condomínio Jardim das Flores"
+                required
+              />
+            )}
+
+            {isVendor && (
+              <>
+                <Input
+                  label="Nome do comércio"
+                  type="text"
+                  name="vendorName"
+                  value={formData.vendorName}
+                  onChange={handleChange}
+                  placeholder="Ex: Lanches da Praça"
+                  required
+                />
+
+                <Input
+                  label="Categoria (opcional)"
+                  type="text"
+                  name="vendorCategory"
+                  value={formData.vendorCategory}
+                  onChange={handleChange}
+                  placeholder="Ex: Lanchonete"
+                />
+
+                <Input
+                  label="Descrição (opcional)"
+                  type="text"
+                  name="vendorDescription"
+                  value={formData.vendorDescription}
+                  onChange={handleChange}
+                  placeholder="Ex: Hamburguer artesanal e porções"
+                />
+
+                <Input
+                  label="Telefone de contato (opcional)"
+                  type="text"
+                  name="vendorContactPhone"
+                  value={formData.vendorContactPhone}
+                  onChange={handleChange}
+                  placeholder="(11) 99999-9999"
+                />
+
+                <Input
+                  label="CNPJ"
+                  type="text"
+                  name="vendorCnpj"
+                  value={formData.vendorCnpj}
+                  onChange={handleChange}
+                  placeholder="00.000.000/0000-00"
+                  required
+                />
+
+                <Input
+                  label="CNAE"
+                  type="text"
+                  name="vendorCnae"
+                  value={formData.vendorCnae}
+                  onChange={handleChange}
+                  placeholder="Ex: 5611-2/01"
+                  required
+                />
+
+                <Input
+                  label="Documento do responsável legal"
+                  type="text"
+                  name="vendorLegalDocument"
+                  value={formData.vendorLegalDocument}
+                  onChange={handleChange}
+                  placeholder="RG/CPF do responsável"
+                  required
+                />
+              </>
+            )}
+
+            {!isDelivery && !isAdmin && !isVendor && (
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <Input
@@ -155,7 +334,7 @@ export default function RegisterPage() {
             )}
 
             <Button type="submit" fullWidth size="lg" loading={loading}>
-              Cadastrar
+              🚀 Criar minha conta
             </Button>
           </form>
 
@@ -168,5 +347,19 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+          <div className="text-center text-gray-600">Preparando seu cadastro...</div>
+        </div>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }
