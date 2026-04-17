@@ -3,6 +3,7 @@ import { Sora, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { ToastContainer } from "@/components/Toast";
+import { Analytics } from "@vercel/analytics/next";
 
 const geistSans = Sora({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
             <p>&copy; 2024 Na Sua Porta. Todos os direitos reservados. 🏢</p>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );
