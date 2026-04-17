@@ -47,18 +47,21 @@ NSP - Front/
 
 ## Configuracao de Ambiente
 
-A aplicacao usa a variavel abaixo para chamadas HTTP:
+A aplicacao usa as variaveis abaixo:
 
-- `NEXT_PUBLIC_API_URL` (opcional)
+- `NEXT_PUBLIC_API_URL` – URL base da API REST (opcional)
+- `NEXT_PUBLIC_SOCKET_URL` – URL raiz do servidor Socket.IO (opcional)
 
-Valor padrao no codigo:
+Valores padrao no codigo:
 
-- `http://localhost:3000/api`
+- `NEXT_PUBLIC_API_URL`: `http://localhost:3000/api`
+- `NEXT_PUBLIC_SOCKET_URL`: inferido de `NEXT_PUBLIC_API_URL` removendo o sufixo `/api`
 
 Se necessario, crie `app/.env.local` com:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
+NEXT_PUBLIC_API_URL=https://na-sua-porta-api.onrender.com/api
+NEXT_PUBLIC_SOCKET_URL=https://na-sua-porta-api.onrender.com
 ```
 
 ## Como Rodar (Desenvolvimento)
