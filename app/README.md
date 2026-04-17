@@ -23,7 +23,8 @@ Acesse: `http://localhost:3001`
 Crie `NSP - Front/app/.env.local` com:
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:3000/api
+NEXT_PUBLIC_API_URL=https://na-sua-porta-api.onrender.com/api
+NEXT_PUBLIC_SOCKET_URL=https://na-sua-porta-api.onrender.com
 ```
 
 ## Scripts

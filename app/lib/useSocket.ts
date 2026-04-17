@@ -64,10 +64,16 @@ export function useSocket(userId?: string, role?: string) {
 
       if (!sharedSocket) {
         sharedSocket = io(SOCKET_SERVER_URL, {
+          transports: ['websocket', 'polling'],
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
           reconnectionAttempts: Infinity,
+          auth: (cb) => {
+            const token =
+              typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+            cb(token ? { token } : {});
+          },
         }) as SocketLike;
 
         sharedSocket.on('connect', () => {
@@ -88,6 +94,10 @@ export function useSocket(userId?: string, role?: string) {
 
         sharedSocket.on('error', (error) => {
           console.error('WebSocket error:', error);
+        });
+
+        sharedSocket.on('connect_error', (error) => {
+          console.error('Socket.IO connect_error:', error);
         });
       }
 
