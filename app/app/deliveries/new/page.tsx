@@ -75,17 +75,17 @@ export default function NewDeliveryPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
-        <div className="text-left p-5 rounded-2xl border-2 border-amber-500 bg-amber-50 shadow">
-          <p className="text-xl font-black text-gray-900">📦 Solicitar coleta na portaria</p>
+        <div className="text-left p-4 sm:p-5 rounded-2xl border-2 border-amber-500 bg-amber-50 shadow">
+          <p className="text-lg sm:text-xl font-black text-gray-900">📦 Solicitar coleta na portaria</p>
           <p className="text-sm text-gray-600 mt-1">O entregador busca seu pedido na portaria</p>
         </div>
 
         <button
           type="button"
           onClick={() => router.push('/shop')}
-          className="text-left p-5 rounded-2xl border-2 border-gray-200 bg-white hover:border-amber-200 transition"
+          className="text-left p-4 sm:p-5 rounded-2xl border-2 border-gray-200 bg-white hover:border-amber-200 transition min-h-[44px]"
         >
-          <p className="text-xl font-black text-gray-900">🍽 Pedir em restaurantes e lojas</p>
+          <p className="text-lg sm:text-xl font-black text-gray-900">🍽 Pedir em restaurantes e lojas</p>
           <p className="text-sm text-gray-600 mt-1">Veja o guia do condomínio e faça pedido pelo cardápio.</p>
         </button>
       </div>
@@ -103,7 +103,7 @@ export default function NewDeliveryPage() {
             <p className="text-sm text-gray-500">Preencha os dados para um entregador buscar seu pedido</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
               label="Apartamento"
               type="text"
@@ -152,7 +152,7 @@ export default function NewDeliveryPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Plataforma do pedido (opcional)
@@ -161,7 +161,7 @@ export default function NewDeliveryPage() {
                 name="externalPlatform"
                 value={form.externalPlatform}
                 onChange={(e) => setForm((prev) => ({ ...prev, externalPlatform: e.target.value }))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+                className="w-full px-4 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
               >
                 <option value="">Selecionar...</option>
                 {PLATFORMS.map((p) => (

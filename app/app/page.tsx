@@ -27,8 +27,8 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12">
       <div className="text-center mb-12">
-        <h1 className="text-6xl font-bold text-amber-600 mb-4">🍕 Na Sua Porta</h1>
-        <p className="text-xl text-gray-600 mb-2">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-amber-600 mb-4">🍕 Na Sua Porta</h1>
+        <p className="text-lg sm:text-xl text-gray-600 mb-2">
           Entregas internas para condomínios
         </p>
         <p className="text-gray-500 mb-8">

@@ -139,28 +139,28 @@ function RegisterPageContent() {
           )}
 
           <div className="mb-4 grid grid-cols-2 gap-2">
-            <Link href="/register" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+            <Link href="/register" className={`min-h-[44px] flex items-center justify-center py-2 px-3 text-center rounded-lg font-medium transition-all ${
               !isDelivery && !isAdmin && !isVendor
                 ? 'bg-amber-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}>
               Morador
             </Link>
-            <Link href="/register?type=delivery" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+            <Link href="/register?type=delivery" className={`min-h-[44px] flex items-center justify-center py-2 px-3 text-center rounded-lg font-medium transition-all ${
               isDelivery
                 ? 'bg-amber-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}>
               Entregador
             </Link>
-            <Link href="/register?type=vendor" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+            <Link href="/register?type=vendor" className={`min-h-[44px] flex items-center justify-center py-2 px-3 text-center rounded-lg font-medium transition-all ${
               isVendor
                 ? 'bg-amber-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}>
               Vendedor
             </Link>
-            <Link href="/register?type=admin" className={`py-2 px-3 text-center rounded-lg font-medium transition-all ${
+            <Link href="/register?type=admin" className={`min-h-[44px] flex items-center justify-center py-2 px-3 text-center rounded-lg font-medium transition-all ${
               isAdmin
                 ? 'bg-amber-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'

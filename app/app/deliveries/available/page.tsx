@@ -141,8 +141,8 @@ export default function AvailableDeliveriesPage() {
         <div className="grid gap-4">
           {deliveries.map((delivery) => (
             <Card key={delivery.id}>
-              <div className="flex justify-between items-start gap-4">
-                <div className="flex-1">
+              <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-3">
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
@@ -210,9 +210,10 @@ export default function AvailableDeliveriesPage() {
                   </div>
                 </div>
 
-                <div className="flex-shrink-0">
+                <div className="w-full sm:flex-shrink-0 sm:w-auto">
                   <Button
                     size="lg"
+                    className="w-full sm:w-auto"
                     onClick={() => handleAcceptDelivery(delivery.id)}
                     loading={accepting === delivery.id}
                     disabled={accepting !== null}

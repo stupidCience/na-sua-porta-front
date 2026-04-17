@@ -30,9 +30,10 @@ export function Button({
   };
 
   const sizeClasses = {
-    sm: 'px-4 py-2 text-sm',
-    md: 'px-5 py-3 text-base',
-    lg: 'px-7 py-3.5 text-lg',
+    // min-h-[44px] satisfies the WCAG 2.5.5 minimum touch-target requirement
+    sm: 'px-4 py-2 text-sm min-h-[44px]',
+    md: 'px-5 py-3 text-base min-h-[44px]',
+    lg: 'px-7 py-3.5 text-lg min-h-[44px]',
   };
 
   return (

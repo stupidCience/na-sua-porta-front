@@ -20,7 +20,8 @@ export function StarRating({ rating = 0, onRate, readonly = false, size = 'md' }
           key={star}
           type="button"
           disabled={readonly}
-          className={`${sizeClass} transition-colors ${
+          // min-w/h-[44px] satisfies the WCAG 2.5.5 minimum touch-target requirement
+          className={`${sizeClass} min-w-[44px] min-h-[44px] flex items-center justify-center transition-colors ${
             readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'
           }`}
           onClick={() => !readonly && onRate?.(star)}
