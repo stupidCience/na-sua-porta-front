@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import clsx from 'clsx';
 
 type Step = {
   key: string;
@@ -20,18 +21,18 @@ export function ProgressStepper({ title, steps, currentKey }: ProgressStepperPro
     steps.findIndex((step) => step.key === currentKey),
   );
 
-  // Use a grid that adapts to the number of steps so 5-step steppers don't wrap
-  const gridCols =
-    steps.length <= 3
-      ? 'grid-cols-3'
-      : steps.length === 4
-      ? 'grid-cols-4'
-      : 'grid-cols-5';
-
   return (
     <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
       {title && <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-600">{title}</p>}
-      <ol className={`grid ${gridCols} gap-1`}>
+      {/* Use complete class strings so Tailwind JIT can detect them statically */}
+      <ol
+        className={clsx(
+          'grid gap-1',
+          steps.length <= 3 && 'grid-cols-3',
+          steps.length === 4 && 'grid-cols-4',
+          steps.length >= 5 && 'grid-cols-5',
+        )}
+      >
         {steps.map((step, index) => {
           const isDone = index <= currentIndex;
           const isCurrent = index === currentIndex;
