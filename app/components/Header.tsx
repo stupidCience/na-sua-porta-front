@@ -14,6 +14,7 @@ export function Header() {
   const { connectionStatus } = useSocket(user?.id, user?.role);
   const previousStatus = useRef(connectionStatus);
   const [showReconnected, setShowReconnected] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (previousStatus.current === 'reconnecting' && connectionStatus === 'connected') {
@@ -25,11 +26,45 @@ export function Header() {
     previousStatus.current = connectionStatus;
   }, [connectionStatus]);
 
+
   const handleLogout = () => {
+    setMobileMenuOpen(false);
     logout();
     localStorage.removeItem('access_token');
     router.push('/');
   };
+
+  const navLinks =
+    user?.role === 'RESIDENT'
+      ? [
+          { href: '/deliveries/new', label: '📦 Solicitar coleta' },
+          { href: '/shop', label: '🍽 Guia de restaurantes' },
+          { href: '/deliveries', label: 'Minhas entregas' },
+          { href: '/chats', label: 'Chats' },
+          { href: '/deliveries/history', label: 'Histórico' },
+        ]
+      : user?.role === 'VENDOR'
+      ? [
+          { href: '/vendor/store', label: 'Meu Comércio' },
+          { href: '/vendor/orders', label: 'Pedidos' },
+          { href: '/chats', label: 'Chats' },
+          { href: '/vendor/history', label: 'Histórico de pedidos' },
+          { href: '/vendor/dashboard', label: 'Dashboard' },
+        ]
+      : user?.role === 'CONDOMINIUM_ADMIN'
+      ? [
+          { href: '/admin', label: 'Painel do Condomínio' },
+          { href: '/admin/vendors', label: 'Comércios' },
+        ]
+      : user
+      ? [
+          { href: '/deliveries/available', label: 'Coletas disponíveis' },
+          { href: '/deliveries/my-deliveries', label: 'Minhas Entregas' },
+          { href: '/chats', label: 'Chats' },
+          { href: '/deliveries/history', label: 'Histórico' },
+          { href: '/dashboard', label: 'Dashboard' },
+        ]
+      : [];
 
   return (
     <header className="bg-black shadow-xl border-b-4 border-amber-500">
@@ -43,11 +78,11 @@ export function Header() {
           Conectado novamente.
         </div>
       )}
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-8">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+        <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 text-xl font-black text-amber-400 tracking-tight">
             <span className="text-2xl">🍕</span>
-            Na Sua Porta
+            <span className="hidden xs:inline">Na Sua Porta</span>
           </Link>
 
           {user && (
@@ -120,16 +155,9 @@ export function Header() {
           )}
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           {user ? (
             <>
-              {['RESIDENT', 'VENDOR', 'DELIVERY_PERSON'].includes(user.role) && (
-                <Link href="/chats" className="md:hidden">
-                  <Button variant="secondary" size="sm">
-                    Chats
-                  </Button>
-                </Link>
-              )}
               <div className="hidden md:block text-right mr-1">
                 <p className="text-xs text-amber-200">Condomínio</p>
                 <p className="text-sm font-medium text-white">
@@ -144,9 +172,23 @@ export function Header() {
                 <Avatar name={user.name} size="sm" />
                 <span className="text-sm text-amber-100 hidden sm:block font-semibold">{user.name}</span>
               </Link>
-              <Button variant="secondary" size="sm" onClick={handleLogout}>
+              <Button variant="secondary" size="sm" onClick={handleLogout} className="hidden md:inline-flex">
                 Sair
               </Button>
+              {/* Hamburger button — visible only on mobile */}
+              {navLinks.length > 0 && (
+                <button
+                  type="button"
+                  aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+                  aria-expanded={mobileMenuOpen}
+                  onClick={() => setMobileMenuOpen((v) => !v)}
+                  className="md:hidden flex flex-col justify-center items-center w-11 h-11 gap-1.5 rounded-lg text-amber-400 hover:bg-white/10 transition"
+                >
+                  <span className={`block h-0.5 w-6 bg-current transition-transform duration-200 ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+                  <span className={`block h-0.5 w-6 bg-current transition-opacity duration-200 ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+                  <span className={`block h-0.5 w-6 bg-current transition-transform duration-200 ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+                </button>
+              )}
             </>
           ) : (
             <>
@@ -162,6 +204,32 @@ export function Header() {
           )}
         </div>
       </nav>
+
+      {/* Mobile navigation drawer */}
+      {user && mobileMenuOpen && (
+        <div className="md:hidden bg-black border-t border-amber-500/30">
+          <div className="px-4 py-3 space-y-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center min-h-[44px] px-3 py-2 rounded-lg text-amber-100 hover:bg-white/10 hover:text-amber-400 font-medium transition"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+          <div className="px-4 pb-4 pt-2 border-t border-white/10">
+            <p className="text-xs text-amber-300 mb-1">
+              {user.condominiumName ? `Condomínio: ${user.condominiumName}` : 'Condomínio não definido'}
+            </p>
+            <Button variant="secondary" size="sm" onClick={handleLogout} className="w-full">
+              Sair
+            </Button>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

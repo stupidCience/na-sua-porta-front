@@ -240,8 +240,8 @@ export default function MyDeliveriesPage() {
 
                   return (
                   <Card key={delivery.id}>
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-3">
                           <StatusBadge status={delivery.status} />
                           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
@@ -333,11 +333,12 @@ export default function MyDeliveriesPage() {
                       </div>
 
                       {delivery.status !== 'DELIVERED' && (
-                        <div className="flex-shrink-0">
+                        <div className="w-full sm:flex-shrink-0 sm:w-auto">
                           <div className="flex flex-col gap-2">
                             <Button
                               size="sm"
                               variant="secondary"
+                              className="w-full sm:w-auto"
                               onClick={() => openChatForDelivery(delivery)}
                             >
                               💬 Falar com morador
@@ -357,6 +358,7 @@ export default function MyDeliveriesPage() {
                             )}
                             <Button
                               size="lg"
+                              className="flex-1 sm:flex-none"
                               variant={delivery.status === 'PICKED_UP' ? 'primary' : 'secondary'}
                               onClick={() =>
                                 delivery.status === 'PICKED_UP'

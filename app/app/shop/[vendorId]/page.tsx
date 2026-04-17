@@ -257,14 +257,14 @@ export default function VendorPage() {
                             <>
                               <button
                                 onClick={() => removeFromCart(item.id)}
-                                className="w-8 h-8 rounded-full border-2 border-amber-500 text-amber-600 font-black flex items-center justify-center hover:bg-amber-50 transition"
+                                className="w-11 h-11 rounded-full border-2 border-amber-500 text-amber-600 font-black flex items-center justify-center hover:bg-amber-50 transition"
                               >
                                 −
                               </button>
                               <span className="text-gray-900 font-black w-5 text-center">{cartItem.quantity}</span>
                               <button
                                 onClick={() => addToCart(item)}
-                                className="w-8 h-8 rounded-full bg-amber-500 text-black font-black flex items-center justify-center hover:filter hover:brightness-95 transition"
+                                className="w-11 h-11 rounded-full bg-amber-500 text-black font-black flex items-center justify-center hover:filter hover:brightness-95 transition"
                               >
                                 +
                               </button>
@@ -310,17 +310,17 @@ export default function VendorPage() {
 
               <div className="space-y-3 mb-4">
                 {cart.map((c) => (
-                  <div key={c.menuItem.id} className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-800 text-sm">{c.menuItem.name}</p>
+                  <div key={c.menuItem.id} className="flex flex-wrap justify-between items-center gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-sm truncate">{c.menuItem.name}</p>
                       <p className="text-xs text-gray-500">R$ {c.menuItem.price.toFixed(2)} × {c.quantity}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => removeFromCart(c.menuItem.id)} className="w-7 h-7 rounded-full border border-gray-300 text-gray-600 font-black flex items-center justify-center">−</button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => removeFromCart(c.menuItem.id)} className="w-9 h-9 rounded-full border border-gray-300 text-gray-600 font-black flex items-center justify-center">−</button>
                       <span className="text-sm font-bold w-4 text-center">{c.quantity}</span>
-                      <button onClick={() => addToCart(c.menuItem)} className="w-7 h-7 rounded-full bg-amber-500 text-black font-black flex items-center justify-center">+</button>
+                      <button onClick={() => addToCart(c.menuItem)} className="w-9 h-9 rounded-full bg-amber-500 text-black font-black flex items-center justify-center">+</button>
                     </div>
-                    <p className="font-black text-amber-700 ml-3 text-sm">R$ {(c.menuItem.price * c.quantity).toFixed(2)}</p>
+                    <p className="font-black text-amber-700 text-sm w-full text-right sm:w-auto sm:ml-3">R$ {(c.menuItem.price * c.quantity).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
