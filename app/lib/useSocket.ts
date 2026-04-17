@@ -16,6 +16,7 @@ type SocketLike = {
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
 const inferredSocketUrl = apiUrl.replace(/\/api\/?$/, '');
 const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || inferredSocketUrl;
+const SOCKET_PATH = process.env.NEXT_PUBLIC_SOCKET_PATH || '/socket.io';
 
 let sharedSocket: SocketLike | null = null;
 let activeSubscribers = 0;
@@ -63,8 +64,11 @@ export function useSocket(userId?: string, role?: string) {
       }
 
       if (!sharedSocket) {
+        console.info('[Socket.IO] Connecting to', SOCKET_SERVER_URL, '| path:', SOCKET_PATH);
+
         sharedSocket = io(SOCKET_SERVER_URL, {
-          transports: ['websocket', 'polling'],
+          path: SOCKET_PATH,
+          transports: ['polling', 'websocket'],
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,
@@ -77,6 +81,7 @@ export function useSocket(userId?: string, role?: string) {
         }) as SocketLike;
 
         sharedSocket.on('connect', () => {
+          console.info('[Socket.IO] Connected successfully to', SOCKET_SERVER_URL);
           notifyStatus('connected');
         });
 
@@ -93,11 +98,19 @@ export function useSocket(userId?: string, role?: string) {
         });
 
         sharedSocket.on('error', (error) => {
-          console.error('WebSocket error:', error);
+          console.error('[Socket.IO] WebSocket error:', error);
         });
 
-        sharedSocket.on('connect_error', (error) => {
-          console.error('Socket.IO connect_error:', error);
+        sharedSocket.on('connect_error', (error: any) => {
+          console.error(
+            '[Socket.IO] connect_error\n',
+            '  url:', SOCKET_SERVER_URL,
+            '\n  path:', SOCKET_PATH,
+            '\n  message:', error?.message,
+            '\n  description:', error?.description,
+            '\n  type:', error?.type,
+            '\n  context:', error?.context,
+          );
         });
       }
 
