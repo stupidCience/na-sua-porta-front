@@ -1,20 +1,48 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
+export type UserRole =
+  | 'RESIDENT'
+  | 'DELIVERY_PERSON'
+  | 'VENDOR'
+  | 'CONDOMINIUM_ADMIN';
+
+export type ResidentVerificationStatus =
+  | 'NOT_SUBMITTED'
+  | 'PENDING_REVIEW'
+  | 'VERIFIED'
+  | 'REJECTED';
+
+export interface AccountModule {
+  module: UserRole;
+  enabled: boolean;
+  active: boolean;
+  missingRequirements: string[];
+}
+
 export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'RESIDENT' | 'DELIVERY_PERSON' | 'VENDOR' | 'CONDOMINIUM_ADMIN';
+  role: UserRole;
+  activeModule?: UserRole;
+  availableModules?: UserRole[];
+  modules?: AccountModule[];
   isVendor?: boolean;
   vendorId?: string | null;
   condominiumId?: string;
   condominiumName?: string | null;
+  condominiumAccessCode?: string | null;
   apartment?: string;
   block?: string;
   phone?: string;
   vehicleInfo?: string | null;
   personalDocument?: string | null;
+  residenceDocument?: string | null;
+  communicationsConsent?: boolean;
+  residentVerificationStatus?: ResidentVerificationStatus | null;
+  registrationSource?: 'DIRECT' | 'CONDOMINIUM_ACCESS_CODE' | null;
+  active?: boolean;
 }
 
 export interface Delivery {

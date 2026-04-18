@@ -31,24 +31,46 @@ api.interceptors.response.use(
   },
 );
 
-export function getApiErrorMessage(error: any, fallback = 'Ocorreu um erro inesperado.') {
-  if (!error?.response) {
+type ApiErrorPayload = {
+  message?: string | string[];
+};
+
+type ApiErrorLike = {
+  response?: {
+    status?: number;
+    data?: ApiErrorPayload;
+  };
+  config?: {
+    url?: string;
+  };
+};
+
+function isApiErrorLike(error: unknown): error is ApiErrorLike {
+  return typeof error === 'object' && error !== null;
+}
+
+function normalizeApiMessage(message?: string | string[]) {
+  if (Array.isArray(message)) {
+    return message
+      .filter((item): item is string => typeof item === 'string' && item.length > 0)
+      .join(' ');
+  }
+
+  if (typeof message === 'string') {
+    return message;
+  }
+
+  return '';
+}
+
+export function getApiErrorMessage(error: unknown, fallback = 'Ocorreu um erro inesperado.') {
+  if (!isApiErrorLike(error) || !error.response) {
     return 'Erro de rede. Verifique sua conexão e tente novamente.';
   }
 
-  const normalizeMessage = (message: any) => {
-    if (Array.isArray(message)) {
-      return message.filter(Boolean).join(' ');
-    }
-    if (typeof message === 'string') {
-      return message;
-    }
-    return '';
-  };
-
-  const status = error.response?.status;
-  const requestUrl = String(error?.config?.url || '');
-  const apiMessage = normalizeMessage(error.response?.data?.message);
+  const status = error.response.status;
+  const requestUrl = String(error.config?.url || '');
+  const apiMessage = normalizeApiMessage(error.response.data?.message);
   const isAuthRequest = /^\/auth\/(login|register)$/.test(requestUrl);
 
   if (status === 401) {
@@ -61,31 +83,41 @@ export function getApiErrorMessage(error: any, fallback = 'Ocorreu um erro inesp
   return apiMessage || fallback;
 }
 
+export type NotificationCategory =
+  | 'CHAT_MESSAGE'
+  | 'ORDER_UPDATE'
+  | 'DELIVERY_UPDATE'
+  | 'SYSTEM';
+
+export interface NotificationItem {
+  id: string;
+  userId: string;
+  category: NotificationCategory;
+  title: string;
+  body: string;
+  link?: string | null;
+  orderId?: string | null;
+  deliveryId?: string | null;
+  metadata?: string | null;
+  isRead: boolean;
+  readAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const authAPI = {
-  register: (
-    email: string,
-    password: string,
-    name: string,
-    apartment?: string,
-    block?: string,
-    condominiumId?: string,
-  ) => api.post('/auth/register', { email, password, name, apartment, block, condominiumId }),
-  
-  registerDelivery: (
-    email: string,
-    password: string,
-    name: string,
-    condominiumId: string,
-    personalDocument: string,
-  ) =>
-    api.post('/auth/register', {
-      email,
-      password,
-      name,
-      role: 'DELIVERY_PERSON',
-      condominiumId,
-      personalDocument,
-    }),
+  register: (data: {
+    email: string;
+    password: string;
+    name: string;
+    apartment?: string;
+    block?: string;
+    phone?: string;
+    personalDocument?: string;
+    residenceDocument?: string;
+    communicationsConsent?: boolean;
+    condominiumCode?: string;
+  }) => api.post('/auth/register', data),
 
   registerAdmin: (email: string, password: string, name: string, condominiumName: string) =>
     api.post('/auth/register', {
@@ -94,34 +126,6 @@ export const authAPI = {
       name,
       role: 'CONDOMINIUM_ADMIN',
       condominiumName,
-    }),
-
-  registerVendor: (
-    email: string,
-    password: string,
-    ownerName: string,
-    condominiumId: string,
-    vendorName: string,
-    vendorCnpj: string,
-    vendorCnae: string,
-    vendorLegalDocument: string,
-    vendorCategory?: string,
-    vendorDescription?: string,
-    vendorContactPhone?: string,
-  ) =>
-    api.post('/auth/register', {
-      email,
-      password,
-      name: ownerName,
-      role: 'VENDOR',
-      condominiumId,
-      vendorName,
-      vendorCnpj,
-      vendorCnae,
-      vendorLegalDocument,
-      vendorCategory,
-      vendorDescription,
-      vendorContactPhone,
     }),
 
   login: (email: string, password: string) =>
@@ -162,8 +166,8 @@ export const deliveriesAPI = {
   cancel: async (id: string) => {
     try {
       return await api.patch(`/deliveries/${id}/cancel`);
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
+    } catch (error: unknown) {
+      if (isApiErrorLike(error) && error.response?.status === 404) {
         return api.patch(`/deliveries/cancel/${id}`);
       }
       throw error;
@@ -211,6 +215,33 @@ export const ordersAPI = {
 export const usersAPI = {
   getMe: () => api.get('/users/me'),
 
+  getMyModules: () => api.get('/users/me/modules'),
+
+  switchActiveModule: (
+    module: 'RESIDENT' | 'DELIVERY_PERSON' | 'VENDOR' | 'CONDOMINIUM_ADMIN',
+  ) => api.patch('/users/me/modules/active', { module }),
+
+  activateModule: (
+    module: 'RESIDENT' | 'DELIVERY_PERSON' | 'VENDOR',
+    data: {
+      phone?: string;
+      apartment?: string;
+      block?: string;
+      communicationsConsent?: boolean;
+      personalDocument?: string;
+      residenceDocument?: string;
+      vehicleInfo?: string;
+      condominiumCode?: string;
+      vendorName?: string;
+      vendorCategory?: string;
+      vendorDescription?: string;
+      vendorCnpj?: string;
+      vendorCnae?: string;
+      vendorLegalDocument?: string;
+      vendorContactPhone?: string;
+    },
+  ) => api.patch('/users/me/modules/activate', { module, ...data }),
+
   updateMe: (data: {
     name?: string;
     phone?: string;
@@ -218,6 +249,8 @@ export const usersAPI = {
     block?: string;
     vehicleInfo?: string;
     personalDocument?: string;
+    residenceDocument?: string;
+    communicationsConsent?: boolean;
   }) => api.patch('/users/me', data),
 
   updateDocuments: (data: {
@@ -230,10 +263,15 @@ export const usersAPI = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.patch('/users/me/password', { currentPassword, newPassword }),
 
-  linkToCondominium: (condominiumId: string) =>
-    api.patch('/users/me/condominium', { condominiumId }),
+  linkToCondominium: (condominiumCode: string) =>
+    api.patch('/users/me/condominium', { condominiumCode }),
 
   getCondominiumUsers: () => api.get('/users/condominium'),
+
+  reviewResidentVerification: (
+    id: string,
+    status: 'PENDING_REVIEW' | 'VERIFIED' | 'REJECTED',
+  ) => api.patch(`/users/${id}/resident-verification`, { status }),
 
   toggleUserStatus: (id: string, active: boolean) =>
     api.patch(`/users/${id}/status`, { active }),
@@ -241,6 +279,11 @@ export const usersAPI = {
 
 export const condominiumsAPI = {
   getMe: () => api.get('/condominiums/me'),
+
+  getMyAccessCode: () => api.get('/condominiums/me/access-code'),
+
+  resolveAccessCode: (accessCode: string) =>
+    api.get(`/condominiums/access/${encodeURIComponent(accessCode)}`),
 
   updateMe: (data: {
     name?: string;
@@ -298,6 +341,19 @@ export const vendorsAPI = {
   sendOrderMessage: (orderId: string, content: string) =>
     api.post(`/vendors/me/orders/${orderId}/messages`, { content }),
   getDashboard: () => api.get('/vendors/me/dashboard'),
+};
+
+export const notificationsAPI = {
+  list: (status: 'all' | 'unread' = 'all', limit = 60) =>
+    api.get('/notifications', { params: { status, limit } }),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id: string) => api.patch(`/notifications/${id}/read`),
+  markAllAsRead: () => api.patch('/notifications/read-all'),
+  markContextAsRead: (
+    kind: 'ORDER' | 'DELIVERY',
+    id: string,
+    category?: NotificationCategory,
+  ) => api.patch('/notifications/context/read', { kind, id, category }),
 };
 
 export default api;

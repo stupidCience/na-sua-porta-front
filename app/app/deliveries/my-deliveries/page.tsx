@@ -2,13 +2,23 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Bike, Boxes, MessageCircleMore, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
+import { NoticeBanner } from '@/components/NoticeBanner';
+import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressStepper } from '@/components/ProgressStepper';
 import { Avatar } from '@/components/Avatar';
-import { deliveriesAPI, getApiErrorMessage } from '@/lib/api';
+import {
+  deliveriesAPI,
+  getApiErrorMessage,
+  notificationsAPI,
+} from '@/lib/api';
+import { loadUnreadCountsByKind } from '@/lib/chatUnread';
+import { useNotificationsStore } from '@/lib/notificationsStore';
 import { useAuthStore } from '@/lib/store';
 import { useSocket } from '@/lib/useSocket';
 import { useToastStore } from '@/components/Toast';
@@ -45,10 +55,16 @@ const inferOrderStatus = (delivery: Delivery) => {
 export default function MyDeliveriesPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { on, off, connectionStatus } = useSocket(user?.id, user?.role);
+  const { setUnreadCount } = useNotificationsStore();
+  const { on, off, connectionStatus } = useSocket(
+    user?.id,
+    user?.role,
+    user?.condominiumId,
+  );
   const { addToast } = useToastStore();
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [unreadByDeliveryId, setUnreadByDeliveryId] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<string | null>(null);
@@ -56,7 +72,25 @@ export default function MyDeliveriesPage() {
   const [confirmModalDeliveryId, setConfirmModalDeliveryId] = useState<string | null>(null);
   const [confirmCodeInput, setConfirmCodeInput] = useState('');
 
-  const openChatForDelivery = (delivery: Delivery) => {
+  const openChatForDelivery = async (delivery: Delivery) => {
+    if ((unreadByDeliveryId[delivery.id] ?? 0) > 0) {
+      try {
+        const response = await notificationsAPI.markContextAsRead(
+          'DELIVERY',
+          delivery.id,
+          'CHAT_MESSAGE',
+        );
+        setUnreadCount(Number(response.data?.unreadCount || 0));
+      } catch {
+        // The chat page will retry read sync if needed.
+      }
+
+      setUnreadByDeliveryId((prev) => ({
+        ...prev,
+        [delivery.id]: 0,
+      }));
+    }
+
     router.push(`/chats?kind=DELIVERY&deliveryId=${delivery.id}`);
   };
 
@@ -65,7 +99,7 @@ export default function MyDeliveriesPage() {
       router.push('/');
       return;
     }
-    loadDeliveries();
+    void Promise.all([loadDeliveries(), loadUnreadCounts()]);
   }, [user, router]);
 
   const loadDeliveries = async () => {
@@ -73,10 +107,18 @@ export default function MyDeliveriesPage() {
       setLoading(true);
       const response = await deliveriesAPI.getMyDeliveries();
       setDeliveries(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Não conseguimos carregar suas entregas agora.'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadUnreadCounts = async () => {
+    try {
+      setUnreadByDeliveryId(await loadUnreadCountsByKind('DELIVERY'));
+    } catch {
+      setUnreadByDeliveryId({});
     }
   };
 
@@ -100,7 +142,7 @@ export default function MyDeliveriesPage() {
         setConfirmModalDeliveryId(null);
         setConfirmCodeInput('');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = getApiErrorMessage(err, 'Não conseguimos atualizar esta etapa da entrega agora.');
       setError(msg);
       addToast(msg, 'error');
@@ -147,7 +189,7 @@ export default function MyDeliveriesPage() {
         setDeliveries((prev) => prev.filter((d) => d.id !== deliveryId));
         addToast('Você cancelou o aceite. O pedido voltou para a fila.', 'info');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       const msg = getApiErrorMessage(err, 'Não conseguimos cancelar o aceite agora.');
       setError(msg);
       addToast(msg, 'error');
@@ -170,22 +212,40 @@ export default function MyDeliveriesPage() {
 
     const handleDeliveryCancelled = (payload: { id: string }) => {
       setDeliveries((prev) => prev.filter((d) => d.id !== payload.id));
+      setUnreadByDeliveryId((prev) => {
+        const next = { ...prev };
+        delete next[payload.id];
+        return next;
+      });
+    };
+
+    const handleDeliveryMessage = (message: { deliveryId: string; sender?: { id: string } }) => {
+      if (!message?.deliveryId || message.sender?.id === user?.id) {
+        return;
+      }
+
+      setUnreadByDeliveryId((prev) => ({
+        ...prev,
+        [message.deliveryId]: (prev[message.deliveryId] ?? 0) + 1,
+      }));
     };
 
     on('delivery_updated', handleDeliveryUpdated);
     on('delivery_cancelled', handleDeliveryCancelled);
+    on('delivery_message', handleDeliveryMessage);
 
     return () => {
       off('delivery_updated', handleDeliveryUpdated);
       off('delivery_cancelled', handleDeliveryCancelled);
+      off('delivery_message', handleDeliveryMessage);
     };
-  }, [on, off]);
+  }, [on, off, user?.id]);
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent mb-4"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-primary)] border-t-transparent mb-4"></div>
           <p className="text-gray-600">Carregando minhas entregas...</p>
         </div>
       </div>
@@ -194,65 +254,84 @@ export default function MyDeliveriesPage() {
 
   const activeDeliveries = deliveries.filter((d) => d.status !== 'DELIVERED');
   const completedDeliveries = deliveries.filter((d) => d.status === 'DELIVERED');
+  const unreadDeliveryCount = activeDeliveries.reduce(
+    (total, delivery) => total + (unreadByDeliveryId[delivery.id] ?? 0),
+    0,
+  );
 
   return (
-    <div>
-      <div className="mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Minhas Entregas</h1>
-            <p className="text-gray-500 mt-1">Gerencie suas entregas em andamento</p>
-          </div>
-        </div>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6 pb-8 mobile-safe-bottom">
+      <PageHeader
+        eyebrow="Operação em andamento"
+        title="Minhas entregas"
+        description="Acompanhe coletas em andamento, confirme retiradas e conclua cada entrega com uma leitura mais objetiva da sua rota."
+        meta={
+          <>
+            <span className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-medium text-[var(--color-secondary)]">
+              {activeDeliveries.length} em andamento
+            </span>
+            {unreadDeliveryCount > 0 && (
+              <span className="rounded-full border border-[rgba(24,49,71,0.12)] bg-[rgba(24,49,71,0.06)] px-3 py-1.5 font-medium text-[var(--color-secondary)]">
+                {unreadDeliveryCount} resposta{unreadDeliveryCount !== 1 ? 's' : ''} nova{unreadDeliveryCount !== 1 ? 's' : ''}
+              </span>
+            )}
+            <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-1.5 font-medium text-[var(--color-foreground-soft)]">
+              {completedDeliveries.length} concluída{completedDeliveries.length !== 1 ? 's' : ''}
+            </span>
+          </>
+        }
+      />
 
       {connectionStatus === 'reconnecting' && (
-        <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
-          Reconectando ao tempo real. Sua lista será atualizada automaticamente.
-        </div>
+        <NoticeBanner tone="warning">
+          Atualizando a lista. Suas entregas aparecem com os dados mais recentes em instantes.
+        </NoticeBanner>
       )}
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
+        <NoticeBanner tone="error">{error}</NoticeBanner>
       )}
 
       {deliveries.length === 0 ? (
-        <Card>
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4">🚶</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhuma entrega em andamento</h3>
-            <p className="text-gray-500">Aceite pedidos disponíveis para começar a ganhar</p>
-          </div>
-        </Card>
+        <EmptyState
+          icon={Bike}
+          title="Nenhuma entrega em andamento"
+          description="Aceite pedidos disponíveis para começar suas entregas e acompanhar tudo por aqui."
+        />
       ) : (
         <div className="space-y-8">
           {activeDeliveries.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-700 mb-4">Em andamento ({activeDeliveries.length})</h2>
+              <h2 className="mb-4 text-lg font-semibold text-[var(--color-secondary)]">Em andamento ({activeDeliveries.length})</h2>
               <div className="grid gap-4">
                 {activeDeliveries.map((delivery) => {
                   const waitingMarketplaceRelease =
                     delivery.type === 'MARKETPLACE' &&
                     delivery.status === 'ACCEPTED' &&
                     delivery.order?.status !== 'SENT';
+                  const unreadMessages = unreadByDeliveryId[delivery.id] ?? 0;
 
                   return (
-                  <Card key={delivery.id}>
+                  <Card key={delivery.id} className="rounded-[28px] p-5 sm:p-6">
                     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-3">
+                        <div className="mb-3 flex flex-wrap items-center gap-3">
                           <StatusBadge status={delivery.status} />
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                            {delivery.type === 'MARKETPLACE' ? '🛒 Pedido' : '📦 Portaria'}
+                          <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-2.5 py-1 text-xs text-[var(--color-secondary)]">
+                            {delivery.type === 'MARKETPLACE' ? 'Pedido' : 'Portaria'}
                           </span>
+                          {unreadMessages > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(24,49,71,0.12)] bg-[rgba(24,49,71,0.06)] px-2.5 py-1 text-xs font-semibold text-[var(--color-secondary)]">
+                              <MessageCircleMore className="h-3.5 w-3.5" />
+                              {unreadMessages} nova{unreadMessages !== 1 ? 's' : ''}
+                            </span>
+                          )}
                         </div>
 
                         <div className="space-y-3">
-                          <div className="bg-gray-100 rounded-lg px-3 py-2 inline-block">
-                            <p className="text-xs text-gray-500">Entregar em</p>
-                            <p className="text-lg font-bold text-gray-800">
+                          <div className="inline-block rounded-2xl border border-[var(--color-line)] bg-[var(--color-background-soft)] px-4 py-3">
+                            <p className="text-xs text-[var(--color-foreground-soft)]">Entregar em</p>
+                            <p className="text-lg font-semibold text-[var(--color-secondary)]">
                               Bloco {delivery.block} · Apto {delivery.apartment}
                             </p>
                           </div>
@@ -260,12 +339,12 @@ export default function MyDeliveriesPage() {
                           {delivery.resident && (
                             <div className="flex items-center gap-2">
                               <Avatar name={delivery.resident.name} size="sm" />
-                              <span className="text-sm text-gray-600">{delivery.resident.name}</span>
+                              <span className="text-sm text-[var(--color-foreground-soft)]">{delivery.resident.name}</span>
                             </div>
                           )}
 
                           {delivery.description && (
-                            <p className="text-gray-700">📦 {delivery.description}</p>
+                            <p className="text-sm leading-6 text-[var(--color-foreground-soft)]">{delivery.description}</p>
                           )}
 
                           <ProgressStepper
@@ -282,26 +361,26 @@ export default function MyDeliveriesPage() {
                                 currentKey={inferOrderStatus(delivery)}
                               />
                               {waitingMarketplaceRelease && (
-                                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                <p className="rounded-2xl border border-[rgba(243,183,27,0.35)] bg-[rgba(255,213,58,0.2)] px-3 py-2 text-xs text-[var(--color-secondary)]">
                                   Aguarde o comércio confirmar a retirada com o código para continuar.
                                 </p>
                               )}
                               {delivery.status === 'ACCEPTED' && (
-                                <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-800">
+                                <div className="rounded-2xl border border-[rgba(31,41,51,0.12)] bg-[rgba(31,41,51,0.04)] px-3 py-3">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-secondary)]">
                                     Código de coleta
                                   </p>
                                   {delivery.order?.pickupCode ? (
                                     <>
-                                      <p className="text-xl font-black tracking-[0.18em] text-sky-900">
+                                      <p className="text-xl font-black tracking-[0.18em] text-[var(--color-primary-dark)]">
                                         {delivery.order.pickupCode}
                                       </p>
-                                      <p className="text-xs text-sky-700">
+                                      <p className="text-xs text-[var(--color-foreground-soft)]">
                                         Informe este código ao comércio para liberar o pedido.
                                       </p>
                                     </>
                                   ) : (
-                                    <p className="text-xs text-sky-700">
+                                    <p className="text-xs text-[var(--color-foreground-soft)]">
                                       Aguardando geração do código de coleta.
                                     </p>
                                   )}
@@ -309,23 +388,23 @@ export default function MyDeliveriesPage() {
                               )}
                               <p className="text-xs font-semibold text-gray-700">
                                 Pagamento:{' '}
-                                <span className={`rounded-full px-2 py-0.5 ${delivery.order?.paymentStatus === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>
-                                  {delivery.order?.paymentStatus === 'PAID' ? '✅ Pago' : '⏳ Pendente'}
+                                <span className={`rounded-full px-2 py-0.5 ${delivery.order?.paymentStatus === 'PAID' ? 'bg-[rgba(26,166,75,0.14)] text-[var(--color-primary-dark)]' : 'bg-[rgba(255,213,58,0.2)] text-[var(--color-secondary)]'}`}>
+                                  {delivery.order?.paymentStatus === 'PAID' ? 'Pago' : 'Pendente'}
                                 </span>
                               </p>
                             </>
                           )}
 
                           <p className="text-sm text-gray-700">
-                            <span className="text-gray-500">Origem do pedido:</span>{' '}
+                            <span className="text-[var(--color-foreground-soft)]">Origem do pedido:</span>{' '}
                             {delivery.pickupOrigin || (delivery.type === 'MARKETPLACE' ? 'Comércio parceiro' : 'Portaria')}
                           </p>
 
                           {delivery.notes && (
-                            <p className="text-sm text-gray-500 italic">💬 {delivery.notes}</p>
+                            <p className="text-sm italic text-[var(--color-foreground-soft)]">{delivery.notes}</p>
                           )}
 
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-[var(--color-foreground-soft)]">
                             Aceito em: {delivery.acceptedAt ? new Date(delivery.acceptedAt).toLocaleString('pt-BR') : '-'}
                           </p>
 
@@ -339,10 +418,21 @@ export default function MyDeliveriesPage() {
                               size="sm"
                               variant="secondary"
                               className="w-full sm:w-auto"
-                              onClick={() => openChatForDelivery(delivery)}
+                              onClick={() => void openChatForDelivery(delivery)}
                             >
-                              💬 Falar com morador
+                              Falar com morador
+                              {unreadMessages > 0 && (
+                                <span className="inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-[var(--color-primary)] px-1.5 py-0.5 text-[11px] font-bold text-white">
+                                  {unreadMessages}
+                                </span>
+                              )}
                             </Button>
+
+                            {unreadMessages > 0 && (
+                              <p className="text-xs font-medium text-[var(--color-primary-dark)]">
+                                Existe resposta nova neste chat da rota.
+                              </p>
+                            )}
 
                             <div className="flex gap-2">
                             {delivery.status === 'ACCEPTED' && (
@@ -384,23 +474,23 @@ export default function MyDeliveriesPage() {
 
           {completedDeliveries.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-700 mb-4">Concluídas ({completedDeliveries.length})</h2>
+              <h2 className="text-lg font-semibold text-[var(--color-secondary)] mb-4">Concluídas ({completedDeliveries.length})</h2>
               <div className="grid gap-4">
                 {completedDeliveries.map((delivery) => (
-                  <Card key={delivery.id}>
+                  <Card key={delivery.id} className="rounded-[28px] p-5 sm:p-6">
                     <div className="flex items-center gap-4 opacity-75">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <StatusBadge status={delivery.status} />
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-[var(--color-foreground-soft)]">
                             Bloco {delivery.block} · Apto {delivery.apartment}
                           </span>
                         </div>
                         {delivery.resident && (
-                          <p className="text-sm text-gray-500">{delivery.resident.name}</p>
+                          <p className="text-sm text-[var(--color-foreground-soft)]">{delivery.resident.name}</p>
                         )}
                       </div>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-[var(--color-foreground-soft)]">
                         {delivery.deliveredAt ? new Date(delivery.deliveredAt).toLocaleString('pt-BR') : ''}
                       </p>
                     </div>
@@ -414,9 +504,9 @@ export default function MyDeliveriesPage() {
 
       {confirmModalDeliveryId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl border border-gray-200">
-            <h3 className="text-xl font-semibold text-gray-900">Confirmar Entrega</h3>
-            <p className="mt-2 text-sm text-gray-600">
+          <div className="w-full max-w-md rounded-2xl border border-[var(--color-line)] bg-white p-6 shadow-xl">
+            <h3 className="text-xl font-semibold text-[var(--color-secondary)]">Confirmar Entrega</h3>
+            <p className="mt-2 text-sm text-[var(--color-foreground-soft)]">
               Digite o código de recebimento informado pelo morador para concluir a entrega.
             </p>
 
@@ -430,7 +520,7 @@ export default function MyDeliveriesPage() {
                 maxLength={6}
                 autoFocus
               />
-              <p className="mt-1 text-xs text-gray-500">O código possui 6 dígitos numéricos.</p>
+              <p className="mt-1 text-xs text-[var(--color-foreground-soft)]">O código possui 6 dígitos numéricos.</p>
             </div>
 
             <div className="mt-6 flex justify-end gap-2">

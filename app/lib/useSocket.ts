@@ -2,14 +2,23 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
+type SocketEventCallback = (...args: unknown[]) => void;
+
+type SocketErrorDetails = {
+  message?: string;
+  description?: string;
+  type?: string;
+  context?: unknown;
+};
+
 type SocketLike = {
   connected: boolean;
-  on: (event: string, callback: (...args: any[]) => void) => void;
-  off: (event: string, callback?: (...args: any[]) => void) => void;
-  emit: (event: string, data?: any) => void;
+  on: (event: string, callback: SocketEventCallback) => void;
+  off: (event: string, callback?: SocketEventCallback) => void;
+  emit: (event: string, data?: unknown) => void;
   disconnect: () => void;
   io: {
-    on: (event: string, callback: (...args: any[]) => void) => void;
+    on: (event: string, callback: SocketEventCallback) => void;
   };
 };
 
@@ -22,6 +31,7 @@ let sharedSocket: SocketLike | null = null;
 let activeSubscribers = 0;
 let status: 'connected' | 'reconnecting' | 'disconnected' = 'disconnected';
 let onlineDeliveryPeople = 0;
+const eventSubscribers = new Map<string, Set<SocketEventCallback>>();
 
 const statusSubscribers = new Set<(value: 'connected' | 'reconnecting' | 'disconnected') => void>();
 const onlineSubscribers = new Set<(count: number) => void>();
@@ -36,7 +46,15 @@ function notifyOnline(count: number) {
   onlineSubscribers.forEach((fn) => fn(count));
 }
 
-export function useSocket(userId?: string, role?: string) {
+function attachEventSubscribers(socket: SocketLike) {
+  eventSubscribers.forEach((callbacks, event) => {
+    callbacks.forEach((callback) => {
+      socket.on(event, callback);
+    });
+  });
+}
+
+export function useSocket(userId?: string, role?: string, condominiumId?: string) {
   const socketRef = useRef<SocketLike | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<
     'connected' | 'reconnecting' | 'disconnected'
@@ -93,35 +111,48 @@ export function useSocket(userId?: string, role?: string) {
           notifyStatus('reconnecting');
         });
 
-        sharedSocket.on('delivery_people_online', (payload: { count: number }) => {
-          notifyOnline(payload?.count ?? 0);
+        sharedSocket.on('delivery_people_online', (payload) => {
+          const nextCount =
+            typeof payload === 'object' &&
+            payload !== null &&
+            'count' in payload &&
+            typeof payload.count === 'number'
+              ? payload.count
+              : 0;
+
+          notifyOnline(nextCount);
         });
 
         sharedSocket.on('error', (error) => {
           console.error('[Socket.IO] WebSocket error:', error);
         });
 
-        sharedSocket.on('connect_error', (error: any) => {
+        sharedSocket.on('connect_error', (error: unknown) => {
+          const socketError =
+            typeof error === 'object' && error !== null ? (error as SocketErrorDetails) : {};
+
           console.error(
             '[Socket.IO] connect_error\n',
             '  url:', SOCKET_SERVER_URL,
             '\n  path:', SOCKET_PATH,
-            '\n  message:', error?.message,
-            '\n  description:', error?.description,
-            '\n  type:', error?.type,
-            '\n  context:', error?.context,
+            '\n  message:', socketError.message,
+            '\n  description:', socketError.description,
+            '\n  type:', socketError.type,
+            '\n  context:', socketError.context,
           );
         });
+
+        attachEventSubscribers(sharedSocket);
       }
 
       socketRef.current = sharedSocket;
 
       if (sharedSocket.connected) {
-        sharedSocket.emit('register-user', { userId, role });
+        sharedSocket.emit('register-user', { userId, role, condominiumId });
       }
 
       onConnect = () => {
-        sharedSocket?.emit('register-user', { userId, role });
+        sharedSocket?.emit('register-user', { userId, role, condominiumId });
       };
 
       onStatus = (next: 'connected' | 'reconnecting' | 'disconnected') => {
@@ -166,22 +197,38 @@ export function useSocket(userId?: string, role?: string) {
 
       socketRef.current = null;
     };
-  }, [userId, role]);
+  }, [userId, role, condominiumId]);
 
   const on = useCallback(
-    (event: string, callback: (data: any) => void) => {
+    <T = unknown>(event: string, callback: (data: T) => void) => {
+      const handler = callback as unknown as SocketEventCallback;
+      const callbacks = eventSubscribers.get(event) ?? new Set<SocketEventCallback>();
+      callbacks.add(handler);
+      eventSubscribers.set(event, callbacks);
+
       if (socketRef.current) {
-        socketRef.current.on(event, callback);
+        socketRef.current.on(event, handler);
       }
     },
     [],
   );
 
   const off = useCallback(
-    (event: string, callback?: (data: any) => void) => {
+    <T = unknown>(event: string, callback?: (data: T) => void) => {
+      if (callback) {
+        const handler = callback as unknown as SocketEventCallback;
+        const callbacks = eventSubscribers.get(event);
+        callbacks?.delete(handler);
+        if (callbacks && callbacks.size === 0) {
+          eventSubscribers.delete(event);
+        }
+      } else {
+        eventSubscribers.delete(event);
+      }
+
       if (socketRef.current) {
         if (callback) {
-          socketRef.current.off(event, callback);
+          socketRef.current.off(event, callback as unknown as SocketEventCallback);
         } else {
           socketRef.current.off(event);
         }
@@ -191,7 +238,7 @@ export function useSocket(userId?: string, role?: string) {
   );
 
   const emit = useCallback(
-    (event: string, data?: any) => {
+    (event: string, data?: unknown) => {
       if (socketRef.current) {
         socketRef.current.emit(event, data);
       }

@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Sora, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
+import { RouteFooter } from "@/components/RouteFooter";
 import { ToastContainer } from "@/components/Toast";
+import { BRAND } from "@/lib/brand";
 
 const geistSans = Sora({
   variable: "--font-geist-sans",
@@ -16,8 +18,20 @@ const geistMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Na Sua Porta - Entregas para Condomínios",
-  description: "Plataforma de entregas internas para condomínios. Rápido, fácil e confiável 🚀",
+  title: BRAND.metadataTitle,
+  description: BRAND.metadataDescription,
+  icons: {
+    icon: "/brand-mark.svg",
+    shortcut: "/brand-mark.svg",
+    apple: "/brand-mark.svg",
+  },
+  openGraph: {
+    title: BRAND.metadataTitle,
+    description: BRAND.metadataDescription,
+    siteName: BRAND.name,
+    locale: "pt_BR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
@@ -30,17 +44,13 @@ export default function RootLayout({
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-screen flex flex-col bg-gray-50">
+      <body className="min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
         <Header />
         <ToastContainer />
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
           {children}
         </main>
-        <footer className="bg-gray-100 border-t border-gray-200 mt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-gray-600">
-            <p>&copy; 2024 Na Sua Porta. Todos os direitos reservados. 🏢</p>
-          </div>
-        </footer>
+        <RouteFooter />
       </body>
     </html>
   );

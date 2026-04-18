@@ -2,8 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Activity, Bike, ChartSpline, Clock3, PackageCheck, Truck } from 'lucide-react';
 import { Card } from '@/components/Card';
+import { NoticeBanner } from '@/components/NoticeBanner';
+import { PageHeader } from '@/components/PageHeader';
 import { ProgressStepper } from '@/components/ProgressStepper';
+import { StatCard } from '@/components/StatCard';
 import { deliveriesAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
@@ -42,7 +46,7 @@ export default function DashboardPage() {
     }
 
     if (user.role !== 'DELIVERY_PERSON') {
-      router.push('/deliveries');
+      router.push('/ambientes');
       return;
     }
 
@@ -53,7 +57,7 @@ export default function DashboardPage() {
     try {
       const response = await deliveriesAPI.getStats();
       setStats(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Não conseguimos carregar seus indicadores agora.'));
     } finally {
       setLoading(false);
@@ -64,7 +68,7 @@ export default function DashboardPage() {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent mb-4"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-primary)] border-t-transparent mb-4"></div>
           <p className="text-gray-600">Carregando seus indicadores...</p>
         </div>
       </div>
@@ -90,112 +94,80 @@ export default function DashboardPage() {
     stats.inProgress > 0 ? 'IN_PROGRESS' : stats.delivered > 0 ? 'DELIVERED' : 'PENDING';
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Sua operação de entregas em tempo real</p>
-        <p className="text-sm text-gray-600 mt-2">
-          Condomínio: {stats.condominiumName || 'Não definido'}
-        </p>
-        <p className="text-sm text-gray-500">Visão da sua operação como entregador</p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Operação do entregador"
+        title="Visão rápida da sua rota"
+        description="Acompanhe volume, andamento e ritmo das suas entregas com uma leitura comercial mais clara do dia."
+        meta={
+          <>
+            <span className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-medium text-[var(--color-secondary)]">
+              {stats.condominiumName || 'Condomínio não definido'}
+            </span>
+            <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-1.5 font-medium text-[var(--color-foreground-soft)]">
+              {stats.total} entregas sob responsabilidade
+            </span>
+          </>
+        }
+      />
 
-      <Card className="mb-6">
+      <Card className="rounded-[28px] p-5 sm:p-6">
         <ProgressStepper
-          title="Momento da operação"
+          title="Seu momento agora"
           steps={operationSteps}
           currentKey={currentOperationKey}
         />
       </Card>
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
+        <NoticeBanner tone="error">{error}</NoticeBanner>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-amber-600">{stats.todayDelivered}</p>
-            <p className="text-sm text-gray-500 mt-1">Suas entregas concluídas hoje</p>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
-            <p className="text-sm text-gray-500 mt-1">Aceitas aguardando coleta</p>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-blue-600">{stats.inProgress}</p>
-            <p className="text-sm text-gray-500 mt-1">Em rota</p>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-green-600">{stats.delivered}</p>
-            <p className="text-sm text-gray-500 mt-1">Concluídas por você</p>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-gray-700">{stats.total}</p>
-            <p className="text-sm text-gray-500 mt-1">Total sob sua responsabilidade</p>
-          </div>
-        </Card>
-
-        <Card>
-          <div className="text-center">
-            <p className="text-3xl font-bold text-purple-600">
-              {stats.avgDeliveryTimeMinutes > 0 ? `~${formatTime(stats.avgDeliveryTimeMinutes)}` : '~5 min'}
-            </p>
-            <p className="text-sm text-gray-500 mt-1">Tempo médio estimado</p>
-          </div>
-        </Card>
+      <div className="content-grid-auto">
+        <StatCard label="Concluídas hoje" value={stats.todayDelivered} description="Volume finalizado no dia atual." icon={PackageCheck} tone="amber" />
+        <StatCard label="Aguardando coleta" value={stats.pending} description="Pedidos aceitos que ainda exigem retirada." icon={Activity} tone="rose" />
+        <StatCard label="Em rota" value={stats.inProgress} description="Entregas atualmente em deslocamento." icon={Truck} tone="sky" />
+        <StatCard label="Concluídas por você" value={stats.delivered} description="Quantidade total de entregas encerradas." icon={Bike} tone="emerald" />
+        <StatCard label="Total em carteira" value={stats.total} description="Pedidos atualmente sob sua responsabilidade." icon={ChartSpline} tone="slate" />
+        <StatCard label="Tempo médio" value={stats.avgDeliveryTimeMinutes > 0 ? `~${formatTime(stats.avgDeliveryTimeMinutes)}` : '~5 min'} description="Média estimada das suas últimas entregas." icon={Clock3} tone="violet" />
       </div>
 
       {/* Summary bar */}
       {stats.total > 0 && (
-        <Card>
-          <h3 className="text-sm font-medium text-gray-600 mb-3">Distribuição de status</h3>
-          <div className="w-full h-4 bg-gray-100 rounded-full overflow-hidden flex">
+        <Card className="rounded-[28px] p-5 sm:p-6">
+          <h3 className="text-sm font-medium text-[var(--color-foreground-soft)] mb-3">Distribuição operacional</h3>
+          <div className="h-4 w-full overflow-hidden rounded-full bg-gray-100 flex">
             {stats.delivered > 0 && (
               <div
-                className="h-full bg-green-500"
+                className="h-full bg-[var(--color-primary)]"
                 style={{ width: `${(stats.delivered / stats.total) * 100}%` }}
                 title={`Concluídas: ${stats.delivered}`}
               />
             )}
             {stats.inProgress > 0 && (
               <div
-                className="h-full bg-blue-500"
+                className="h-full bg-[var(--color-secondary)]"
                 style={{ width: `${(stats.inProgress / stats.total) * 100}%` }}
                 title={`Em andamento: ${stats.inProgress}`}
               />
             )}
             {stats.pending > 0 && (
               <div
-                className="h-full bg-yellow-400"
+                className="h-full bg-[var(--color-accent-strong)]"
                 style={{ width: `${(stats.pending / stats.total) * 100}%` }}
                 title={`Aguardando: ${stats.pending}`}
               />
             )}
           </div>
-          <div className="flex gap-4 mt-2 text-xs text-gray-500">
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--color-foreground-soft)]">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-green-500" /> Concluídas
+              <span className="w-2 h-2 rounded-full bg-[var(--color-primary)]" /> Concluídas
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-blue-500" /> Em andamento
+              <span className="w-2 h-2 rounded-full bg-[var(--color-secondary)]" /> Em andamento
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-yellow-400" /> Aguardando
+              <span className="w-2 h-2 rounded-full bg-[var(--color-accent-strong)]" /> Aguardando
             </span>
           </div>
         </Card>

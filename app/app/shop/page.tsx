@@ -3,7 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
+import { Coffee, Package, Pill, ShoppingBag, Store } from 'lucide-react';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
+import { Input } from '@/components/Input';
+import { NoticeBanner } from '@/components/NoticeBanner';
+import { PageHeader } from '@/components/PageHeader';
 import { vendorsAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
@@ -42,7 +48,7 @@ export default function ShopPage() {
       return;
     }
     if (user.role !== 'RESIDENT') {
-      router.push('/deliveries');
+      router.push('/ambientes');
       return;
     }
     loadVendors();
@@ -52,7 +58,7 @@ export default function ShopPage() {
     try {
       const response = await vendorsAPI.list();
       setVendors(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Não conseguimos carregar os comércios agora.'));
     } finally {
       setLoading(false);
@@ -67,116 +73,132 @@ export default function ShopPage() {
   if (!hasHydrated || loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
-        <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-[var(--color-primary)] border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-500 font-medium">Carregando comércios...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-black text-gray-900">🍽 Guia de restaurantes e lojas</h1>
-        <p className="text-gray-500 mt-1">Cardápios disponíveis para pedir com entrega no condomínio.</p>
-      </div>
+    <div className="mx-auto max-w-6xl space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Comércio do condomínio"
+        title="Guia de restaurantes e lojas"
+        description="Descubra cardápios e serviços com uma vitrine mais clara para pedir sem sair de casa e receber direto no condomínio."
+        actions={
+          <Link href="/deliveries/new">
+            <span className="button-secondary inline-flex min-h-[44px] items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold">
+              Fazer coleta na portaria
+            </span>
+          </Link>
+        }
+      />
 
-      <Card>
+      <Card className="rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm font-bold uppercase tracking-wide text-amber-700">Guia rápido</p>
-            <p className="text-sm text-gray-600">Busque por categoria ou nome para encontrar seu próximo pedido.</p>
+            <p className="text-sm font-bold uppercase tracking-wide text-[var(--color-primary-dark)]">Guia rápido</p>
+            <p className="text-sm text-[var(--color-foreground-soft)]">Busque por categoria ou nome para encontrar seu próximo pedido.</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
-            <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">🍔 Lanches</span>
-            <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-800">🛒 Mercado</span>
-            <span className="rounded-full bg-sky-100 px-3 py-1 text-sky-800">💊 Farmácia</span>
-            <span className="rounded-full bg-rose-100 px-3 py-1 text-rose-800">☕ Padaria</span>
+            {[
+              { label: 'Lanches', tone: 'bg-[rgba(255,213,58,0.2)] text-[var(--color-primary-dark)]', Icon: ShoppingBag },
+              { label: 'Mercado', tone: 'bg-[rgba(26,166,75,0.14)] text-[var(--color-primary-dark)]', Icon: Package },
+              { label: 'Farmácia', tone: 'bg-[rgba(31,41,51,0.08)] text-[var(--color-secondary)]', Icon: Pill },
+              { label: 'Padaria', tone: 'bg-[rgba(26,166,75,0.1)] text-[var(--color-secondary)]', Icon: Coffee },
+            ].map(({ label, tone, Icon }) => {
+              const ChipIcon = Icon as LucideIcon;
+              return (
+                <span key={label} className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 ${tone}`}>
+                  <ChipIcon className="h-3.5 w-3.5" />
+                  {label}
+                </span>
+              );
+            })}
           </div>
         </div>
       </Card>
 
-      {/* Search */}
-      <div className="mb-6 mt-6">
-        <input
-          type="text"
-          placeholder="Buscar por nome ou categoria..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-gray-800 bg-white shadow-sm"
-        />
-      </div>
+      <Input
+        type="text"
+        placeholder="Buscar por nome ou categoria..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="pl-12"
+      />
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+        <NoticeBanner tone="error">
           {error}
           <button onClick={loadVendors} className="ml-3 underline font-semibold">Tentar novamente</button>
-        </div>
+        </NoticeBanner>
       )}
 
       {!error && filtered.length === 0 && (
-        <div className="text-center py-20">
-          <p className="text-5xl mb-4">🏪</p>
-          <p className="text-xl font-bold text-gray-700">Nenhum comércio encontrado</p>
-          <p className="text-gray-500 mt-2 mb-6">
-            {search ? 'Tente outra busca.' : 'Assim que estabelecimentos se cadastrarem, eles aparecerão aqui.'}
-          </p>
-          <Link href="/deliveries">
-            <button className="button-primary px-6 py-3 text-sm font-bold rounded-xl">
-              📦 Fazer Coleta na Portaria
-            </button>
-          </Link>
-        </div>
+        <EmptyState
+          icon={Store}
+          title="Nenhum comércio encontrado"
+          description={search ? 'Tente outra busca ou ajuste os termos digitados.' : 'Assim que novos estabelecimentos se cadastrarem, eles aparecerão aqui.'}
+          actions={
+            <Link href="/deliveries/new">
+              <span className="button-primary inline-flex min-h-[44px] items-center justify-center rounded-2xl px-6 py-3 text-sm font-semibold">
+                Fazer coleta na portaria
+              </span>
+            </Link>
+          }
+        />
       )}
 
-      {/* Vendor Grid */}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {filtered.map((vendor) => (
           <Link key={vendor.id} href={`/shop/${vendor.id}`} className="block group">
-            <div className="card-default rounded-2xl overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group-hover:border-amber-300">
-              {/* Cover */}
-              <div className="h-36 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center text-6xl relative overflow-hidden">
+            <Card className="overflow-hidden rounded-[28px] p-0 group-hover:border-[var(--color-accent-strong)]">
+              <div className="relative flex h-40 items-center justify-center overflow-hidden bg-gradient-to-br from-[rgba(255,213,58,0.28)] via-[rgba(26,166,75,0.14)] to-[rgba(31,41,51,0.08)]">
                 {vendor.imageUrl ? (
                   <img src={vendor.imageUrl} alt={vendor.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span>{categoryEmoji(vendor.category)}</span>
+                  <div className="flex h-18 w-18 items-center justify-center rounded-[28px] bg-white/80 text-[var(--color-primary-dark)] shadow-lg">
+                    {(() => {
+                      const { Icon } = getCategoryMeta(vendor.category);
+                      return <Icon className="h-8 w-8" />;
+                    })()}
+                  </div>
                 )}
                 {vendor.rating && (
-                  <span className="absolute top-2 right-2 bg-white/90 text-amber-700 text-xs font-black px-2 py-1 rounded-full shadow">
-                    ⭐ {vendor.rating.toFixed(1)}
+                  <span className="absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-[var(--color-primary-dark)] shadow-sm">
+                    Nota {vendor.rating.toFixed(1)}
                   </span>
                 )}
               </div>
 
-              {/* Info */}
-              <div className="p-4">
-                <h2 className="text-lg font-black text-gray-900 truncate">{vendor.name}</h2>
+              <div className="p-5">
+                <h2 className="truncate text-lg font-semibold text-[var(--color-secondary)]">{vendor.name}</h2>
                 {vendor.category && (
-                  <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide mt-0.5">{vendor.category}</p>
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--color-primary-dark)]">{vendor.category}</p>
                 )}
                 {vendor.description && (
-                  <p className="text-sm text-gray-500 mt-1 line-clamp-2">{vendor.description}</p>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--color-foreground-soft)]">{vendor.description}</p>
                 )}
 
-                <div className="flex items-center gap-3 mt-3 text-xs text-gray-500">
+                <div className="mt-4 flex flex-wrap items-center gap-2 text-xs font-semibold">
                   {vendor.estimatedTimeMinutes && (
-                    <span>⏱ {vendor.estimatedTimeMinutes} min</span>
+                    <span className="rounded-full bg-[rgba(255,213,58,0.2)] px-3 py-1 text-[var(--color-primary-dark)] ring-1 ring-[rgba(243,183,27,0.35)]">{vendor.estimatedTimeMinutes} min</span>
                   )}
                   {vendor.minOrderValue !== undefined && vendor.minOrderValue > 0 && (
-                    <span>💳 Mín. R$ {vendor.minOrderValue.toFixed(2)}</span>
+                    <span className="rounded-full bg-[rgba(26,166,75,0.14)] px-3 py-1 text-[var(--color-primary-dark)] ring-1 ring-[rgba(26,166,75,0.2)]">Mín. R$ {vendor.minOrderValue.toFixed(2)}</span>
                   )}
                   {vendor._count && (
-                    <span>🛍 {vendor._count.orders} pedidos</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-700 ring-1 ring-slate-200">{vendor._count.orders} pedidos</span>
                   )}
                 </div>
 
                 <div className="mt-4">
-                  <span className="button-primary text-xs px-4 py-2 rounded-xl inline-block font-bold">
-                    Ver cardápio →
+                  <span className="button-primary inline-block rounded-2xl px-4 py-2 text-xs font-semibold">
+                    Ver cardápio
                   </span>
                 </div>
               </div>
-            </div>
+            </Card>
           </Link>
         ))}
       </div>
@@ -184,17 +206,12 @@ export default function ShopPage() {
   );
 }
 
-function categoryEmoji(category?: string): string {
-  if (!category) return '🏪';
+function getCategoryMeta(category?: string): { Icon: LucideIcon } {
+  if (!category) return { Icon: Store };
   const c = category.toLowerCase();
-  if (c.includes('restaurante') || c.includes('comida') || c.includes('lanche')) return '🍔';
-  if (c.includes('pizza')) return '🍕';
-  if (c.includes('doce') || c.includes('confeit') || c.includes('bolo')) return '🎂';
-  if (c.includes('mercado') || c.includes('supermercado')) return '🛒';
-  if (c.includes('farmácia') || c.includes('farmacia') || c.includes('saúde')) return '💊';
-  if (c.includes('bebida') || c.includes('bar')) return '🥤';
-  if (c.includes('pet')) return '🐾';
-  if (c.includes('flores') || c.includes('floricultura')) return '💐';
-  if (c.includes('padaria') || c.includes('café') || c.includes('cafe')) return '☕';
-  return '🏪';
+  if (c.includes('restaurante') || c.includes('comida') || c.includes('lanche') || c.includes('pizza')) return { Icon: ShoppingBag };
+  if (c.includes('mercado') || c.includes('supermercado')) return { Icon: Package };
+  if (c.includes('farmácia') || c.includes('farmacia') || c.includes('saúde')) return { Icon: Pill };
+  if (c.includes('padaria') || c.includes('café') || c.includes('cafe') || c.includes('doce') || c.includes('confeit')) return { Icon: Coffee };
+  return { Icon: Store };
 }

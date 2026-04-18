@@ -3,7 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Archive, History, ShieldCheck } from 'lucide-react';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
+import { NoticeBanner } from '@/components/NoticeBanner';
+import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { Avatar } from '@/components/Avatar';
 import { StarRating } from '@/components/StarRating';
@@ -25,7 +29,11 @@ const deliverySteps = [
 export default function HistoryPage() {
   const router = useRouter();
   const { user, hasHydrated } = useAuthStore();
-  const { on, off, connectionStatus } = useSocket(user?.id, user?.role);
+  const { on, off, connectionStatus } = useSocket(
+    user?.id,
+    user?.role,
+    user?.condominiumId,
+  );
   const { addToast } = useToastStore();
 
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -83,7 +91,7 @@ export default function HistoryPage() {
       setLoading(true);
       const response = await deliveriesAPI.getHistory();
       setDeliveries(response.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Não conseguimos carregar seu histórico agora.'));
     } finally {
       setLoading(false);
@@ -96,7 +104,7 @@ export default function HistoryPage() {
       setDeliveries((prev) => prev.map((d) => (d.id === deliveryId ? response.data : d)));
       setRatingId(null);
       addToast('Obrigado pela avaliação!', 'success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       addToast(getApiErrorMessage(err, 'Não conseguimos registrar sua avaliação agora.'), 'error');
     }
   };
@@ -114,7 +122,7 @@ export default function HistoryPage() {
     return (
       <div className="flex justify-center items-center min-h-[60vh]">
         <div className="text-center">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-amber-600 border-t-transparent mb-4"></div>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-primary)] border-t-transparent mb-4"></div>
           <p className="text-gray-600">Carregando seu histórico...</p>
         </div>
       </div>
@@ -122,78 +130,78 @@ export default function HistoryPage() {
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">Histórico de Entregas</h1>
-        <p className="text-gray-500 mt-1">
-          {deliveries.length} entrega{deliveries.length !== 1 ? 's' : ''} concluída{deliveries.length !== 1 ? 's' : ''}
-        </p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6 pb-8">
+      <PageHeader
+        eyebrow="Suas entregas"
+        title="Histórico de entregas"
+        description="Veja seus pedidos já concluídos, o tempo de entrega e as avaliações que você fez."
+        meta={
+          <span className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-medium text-[var(--color-secondary)]">
+            {deliveries.length} entrega{deliveries.length !== 1 ? 's' : ''} concluída{deliveries.length !== 1 ? 's' : ''}
+          </span>
+        }
+      />
 
       {connectionStatus === 'reconnecting' && (
-        <div className="mb-4 p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
-          Reconectando ao tempo real. Seus dados serão atualizados em instantes.
-        </div>
+        <NoticeBanner tone="warning">
+          Atualizando suas informações. Seus dados voltam em instantes.
+        </NoticeBanner>
       )}
 
       {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-          {error}
-        </div>
+        <NoticeBanner tone="error">{error}</NoticeBanner>
       )}
 
       {deliveries.length === 0 ? (
-        <Card>
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4">📜</div>
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">Nenhuma entrega concluída</h3>
-            <p className="text-gray-500 mb-6">Quando você finalizar entregas, o histórico aparecerá aqui.</p>
+        <EmptyState
+          icon={Archive}
+          title="Nenhuma entrega concluída"
+          description="Quando você finalizar entregas, o histórico aparecerá aqui automaticamente."
+          actions={
             <Link href={user?.role === 'RESIDENT' ? '/deliveries/new' : '/deliveries/available'}>
-              <Button size="lg">
-                {user?.role === 'RESIDENT' ? '🚀 Fazer primeiro pedido' : '✅ Aceitar entrega'}
-              </Button>
+              <Button size="lg">{user?.role === 'RESIDENT' ? 'Fazer primeiro pedido' : 'Aceitar entrega'}</Button>
             </Link>
-          </div>
-        </Card>
+          }
+        />
       ) : (
         <div className="grid gap-4">
           {deliveries.map((delivery) => (
-            <Card key={delivery.id}>
+            <Card key={delivery.id} className="rounded-[28px] p-5 sm:p-6">
               <div className="flex items-start gap-4">
                 <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-3">
+                  <div className="mb-3 flex flex-wrap items-center gap-3">
                     <StatusBadge status={delivery.status} />
-                    <span className="text-xs text-gray-400">#{delivery.id.slice(0, 8)}</span>
+                    <span className="text-xs text-[var(--color-foreground-soft)]">#{delivery.id.slice(0, 8)}</span>
                   </div>
 
                   <div className="space-y-2">
-                    <p className="text-gray-700">
-                      <span className="text-sm text-gray-500">Destino:</span>{' '}
+                    <p className="text-[var(--color-secondary)]">
+                      <span className="text-sm text-[var(--color-foreground-soft)]">Destino:</span>{' '}
                       <strong>Bloco {delivery.block} · Apto {delivery.apartment}</strong>
                     </p>
 
                     {delivery.description && (
-                      <p className="text-gray-600 text-sm">📦 {delivery.description}</p>
+                      <p className="text-sm text-[var(--color-foreground-soft)]">{delivery.description}</p>
                     )}
 
                     <ProgressStepper
-                      title="Fluxo concluído"
+                      title="Entrega concluída"
                       steps={deliverySteps}
                       currentKey="DELIVERED"
                     />
 
-                    <div className="flex flex-wrap items-center gap-4 mt-3 pt-3 border-t border-gray-100">
+                    <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-[var(--color-line)] pt-3">
                       {user?.role === 'RESIDENT' && delivery.deliveryPerson && (
                         <div className="flex items-center gap-2">
                           <Avatar name={delivery.deliveryPerson.name} size="sm" />
-                          <span className="text-sm text-gray-600">{delivery.deliveryPerson.name}</span>
+                          <span className="text-sm text-[var(--color-foreground-soft)]">{delivery.deliveryPerson.name}</span>
                         </div>
                       )}
 
                       {user?.role === 'DELIVERY_PERSON' && delivery.resident && (
                         <div className="flex items-center gap-2">
                           <Avatar name={delivery.resident.name} size="sm" />
-                          <span className="text-sm text-gray-600">{delivery.resident.name}</span>
+                          <span className="text-sm text-[var(--color-foreground-soft)]">{delivery.resident.name}</span>
                         </div>
                       )}
 
@@ -208,8 +216,8 @@ export default function HistoryPage() {
                       </span>
 
                       {delivery.createdAt && delivery.deliveredAt && (
-                        <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
-                          ⏱ {formatDuration(delivery.createdAt, delivery.deliveredAt)}
+                        <span className="rounded px-2 py-0.5 text-xs text-[var(--color-primary-dark)] bg-[rgba(26,166,75,0.14)]">
+                          {formatDuration(delivery.createdAt, delivery.deliveredAt)}
                         </span>
                       )}
 
@@ -218,17 +226,17 @@ export default function HistoryPage() {
                       )}
 
                       {user?.role === 'RESIDENT' && !delivery.rating && (
-                        <div className="text-sm text-emerald-700 bg-emerald-50 px-3 py-2 rounded">
-                          <p className="font-medium">Entrega finalizada 🎉</p>
+                        <div className="rounded-2xl bg-emerald-50 px-3 py-2 text-sm text-emerald-700 ring-1 ring-emerald-100">
+                          <p className="font-medium">Entrega finalizada</p>
                           {ratingId === delivery.id ? (
                             <div className="mt-2">
-                              <p className="text-xs text-gray-600 mb-1">Avalie esta entrega</p>
+                              <p className="mb-1 text-xs text-[var(--color-foreground-soft)]">Avalie esta entrega</p>
                               <StarRating onRate={(r) => handleRate(delivery.id, r)} size="md" />
                             </div>
                           ) : (
                             <button
                               onClick={() => setRatingId(delivery.id)}
-                              className="text-amber-700 font-semibold hover:text-amber-800"
+                              className="font-semibold text-[var(--color-primary-dark)] hover:text-[var(--color-secondary)]"
                             >
                               Avaliar
                             </button>

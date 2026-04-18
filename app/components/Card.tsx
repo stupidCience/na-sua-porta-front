@@ -11,7 +11,7 @@ export function Card({ children, className, padding = true }: CardProps) {
   return (
     <div
       className={clsx(
-        'card-default hover:shadow-lg transition-shadow',
+        'card-default surface-panel transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_26px_54px_rgba(28,25,23,0.12)]',
         padding && 'p-6',
         className,
       )}

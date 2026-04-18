@@ -2,9 +2,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { LayoutTemplate, PackagePlus, Store } from 'lucide-react';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { Input } from '@/components/Input';
+import { NoticeBanner } from '@/components/NoticeBanner';
+import { PageHeader } from '@/components/PageHeader';
 import { vendorsAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 import { useToastStore } from '@/components/Toast';
@@ -81,7 +84,7 @@ export default function VendorStorePage() {
         estimatedTimeMinutes: data.estimatedTimeMinutes ? String(data.estimatedTimeMinutes) : '',
         minOrderValue: data.minOrderValue ? String(data.minOrderValue) : '',
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(getApiErrorMessage(err, 'Não foi possível carregar seu comércio agora.'));
     } finally {
       setLoading(false);
@@ -95,7 +98,7 @@ export default function VendorStorePage() {
       return;
     }
     if (user.role !== 'VENDOR') {
-      router.push('/deliveries');
+      router.push('/ambientes');
       return;
     }
     loadVendor();
@@ -124,7 +127,7 @@ export default function VendorStorePage() {
       });
       addToast('Informações do comércio atualizadas.', 'success');
       await loadVendor();
-    } catch (err: any) {
+    } catch (err: unknown) {
       addToast(getApiErrorMessage(err, 'Não foi possível salvar o comércio agora.'), 'error');
     } finally {
       setSaving(false);
@@ -149,7 +152,7 @@ export default function VendorStorePage() {
       addToast('Item adicionado ao cardápio.', 'success');
       setItemForm({ name: '', description: '', price: '', category: '', imageUrl: '' });
       await loadVendor();
-    } catch (err: any) {
+    } catch (err: unknown) {
       addToast(getApiErrorMessage(err, 'Não foi possível adicionar o item agora.'), 'error');
     } finally {
       setAddingItem(false);
@@ -170,7 +173,7 @@ export default function VendorStorePage() {
           : prev,
       );
       addToast(item.available ? 'Item pausado.' : 'Item disponibilizado.', 'success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       addToast(getApiErrorMessage(err, 'Não foi possível atualizar este item.'), 'error');
     }
   };
@@ -187,7 +190,7 @@ export default function VendorStorePage() {
           : prev,
       );
       addToast('Item removido do cardápio.', 'success');
-    } catch (err: any) {
+    } catch (err: unknown) {
       addToast(getApiErrorMessage(err, 'Não foi possível remover este item.'), 'error');
     }
   };
@@ -195,30 +198,29 @@ export default function VendorStorePage() {
   if (!hasHydrated || loading) {
     return (
       <div className="flex min-h-[55vh] items-center justify-center">
-        <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-500 border-t-transparent" />
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--color-primary)] border-t-transparent" />
       </div>
     );
   }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 pb-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900">Meu Comércio</h1>
-          <p className="mt-1 text-sm text-gray-500">Atualize seus dados e gerencie o cardápio.</p>
-        </div>
-        <Button variant="secondary" onClick={() => router.push('/vendor/orders')}>
-          Ver Pedidos
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Vitrine da loja"
+        title="Meu comércio"
+        description="Atualize sua vitrine, os dados da loja e o cardápio exibido aos moradores com uma apresentação mais comercial e clara."
+        actions={
+          <Button variant="secondary" onClick={() => router.push('/vendor/orders')}>
+            Ver pedidos
+          </Button>
+        }
+      />
 
       {error && (
-        <Card>
-          <p className="text-sm text-red-700">{error}</p>
-        </Card>
+        <NoticeBanner tone="error">{error}</NoticeBanner>
       )}
 
-      <Card>
+      <Card className="rounded-[28px] p-6 sm:p-8">
         <div className="grid gap-4 md:grid-cols-2">
           <Input
             label="Nome do comércio"
@@ -264,18 +266,24 @@ export default function VendorStorePage() {
             onChange={(e) => setStoreForm((f) => ({ ...f, bannerUrl: e.target.value }))}
             placeholder="https://..."
           />
-          <Input
-            label="Descrição"
-            value={storeForm.description}
-            onChange={(e) => setStoreForm((f) => ({ ...f, description: e.target.value }))}
-            placeholder="Resumo do seu comércio"
-          />
+          <div>
+            <label className="field-label">Descrição</label>
+            <textarea
+              value={storeForm.description}
+              onChange={(e) => setStoreForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Resumo do seu comércio"
+              className="field-textarea"
+              rows={4}
+            />
+          </div>
           <div className="md:col-span-2">
-            <Input
-              label="Sobre"
+            <label className="field-label">Sobre</label>
+            <textarea
               value={storeForm.aboutText}
               onChange={(e) => setStoreForm((f) => ({ ...f, aboutText: e.target.value }))}
               placeholder="Conte mais sobre seu negócio"
+              className="field-textarea"
+              rows={4}
             />
           </div>
         </div>
@@ -286,14 +294,14 @@ export default function VendorStorePage() {
         </div>
       </Card>
 
-      <Card>
-        <h2 className="text-xl font-bold text-gray-900">Prévia da sua vitrine</h2>
-        <p className="mt-1 text-sm text-gray-500">
+      <Card className="rounded-[28px] p-6 sm:p-8">
+        <h2 className="text-xl font-semibold text-[var(--color-secondary)]">Prévia da sua vitrine</h2>
+        <p className="mt-1 text-sm text-[var(--color-foreground-soft)]">
           Veja como seu comércio aparece para moradores no guia.
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="relative h-40 bg-gradient-to-r from-amber-200 via-orange-200 to-rose-200">
+        <div className="mt-4 overflow-hidden rounded-2xl border border-[var(--color-line)] bg-white shadow-sm">
+          <div className="relative h-40 bg-gradient-to-r from-[rgba(255,213,58,0.28)] via-[rgba(26,166,75,0.14)] to-[rgba(31,41,51,0.1)]">
             {storeForm.bannerUrl ? (
               <img src={storeForm.bannerUrl} alt="Banner da vitrine" className="h-full w-full object-cover" />
             ) : null}
@@ -303,7 +311,7 @@ export default function VendorStorePage() {
                 {storeForm.imageUrl ? (
                   <img src={storeForm.imageUrl} alt="Logo" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xl">🏪</div>
+                  <div className="flex h-full w-full items-center justify-center text-[var(--color-primary-dark)]"><Store className="h-6 w-6" /></div>
                 )}
               </div>
               <div>
@@ -316,23 +324,23 @@ export default function VendorStorePage() {
           </div>
 
           <div className="p-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-[var(--color-foreground-soft)]">
               {storeForm.description || 'Adicione uma descrição para apresentar sua loja aos moradores.'}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
               {storeForm.estimatedTimeMinutes && (
-                <span className="rounded-full bg-amber-100 px-2 py-1 text-amber-800">
-                  ⏱ {storeForm.estimatedTimeMinutes} min
+                <span className="rounded-full bg-[rgba(255,213,58,0.2)] px-2 py-1 text-[var(--color-secondary)]">
+                  {storeForm.estimatedTimeMinutes} min
                 </span>
               )}
               {storeForm.minOrderValue && (
-                <span className="rounded-full bg-emerald-100 px-2 py-1 text-emerald-800">
-                  💳 Mín. R$ {Number(storeForm.minOrderValue).toFixed(2)}
+                <span className="rounded-full bg-[rgba(26,166,75,0.14)] px-2 py-1 text-[var(--color-primary-dark)]">
+                  Mín. R$ {Number(storeForm.minOrderValue).toFixed(2)}
                 </span>
               )}
               {storeForm.contactPhone && (
-                <span className="rounded-full bg-sky-100 px-2 py-1 text-sky-800">
-                  ☎ {storeForm.contactPhone}
+                <span className="rounded-full bg-[rgba(31,41,51,0.06)] px-2 py-1 text-[var(--color-secondary)]">
+                  {storeForm.contactPhone}
                 </span>
               )}
             </div>
@@ -341,14 +349,14 @@ export default function VendorStorePage() {
               <p className="text-sm font-semibold text-gray-800">Itens em destaque</p>
               <div className="mt-2 grid gap-2 md:grid-cols-2">
                 {(vendor?.menuItems || []).filter((item) => item.available).slice(0, 4).map((item) => (
-                  <div key={item.id} className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-                    <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                    <p className="text-xs text-gray-500">{item.category || 'Sem categoria'}</p>
-                    <p className="text-sm font-bold text-amber-700">R$ {item.price.toFixed(2)}</p>
+                  <div key={item.id} className="rounded-lg border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-2">
+                    <p className="text-sm font-semibold text-[var(--color-secondary)]">{item.name}</p>
+                    <p className="text-xs text-[var(--color-foreground-soft)]">{item.category || 'Sem categoria'}</p>
+                    <p className="text-sm font-bold text-[var(--color-primary-dark)]">R$ {item.price.toFixed(2)}</p>
                   </div>
                 ))}
                 {(vendor?.menuItems || []).filter((item) => item.available).length === 0 && (
-                  <p className="text-xs text-gray-500">Adicione itens disponíveis para visualizar a vitrine completa.</p>
+                  <p className="text-xs text-[var(--color-foreground-soft)]">Adicione itens disponíveis para visualizar a vitrine completa.</p>
                 )}
               </div>
             </div>
@@ -356,8 +364,8 @@ export default function VendorStorePage() {
         </div>
       </Card>
 
-      <Card>
-        <h2 className="text-xl font-bold text-gray-900">Adicionar item no cardápio</h2>
+      <Card className="rounded-[28px] p-6 sm:p-8">
+        <h2 className="text-xl font-semibold text-[var(--color-secondary)]">Adicionar item no cardápio</h2>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <Input
             label="Nome"
@@ -385,11 +393,13 @@ export default function VendorStorePage() {
             placeholder="https://..."
           />
           <div className="md:col-span-2">
-            <Input
-              label="Descrição"
+            <label className="field-label">Descrição</label>
+            <textarea
               value={itemForm.description}
               onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
               placeholder="Detalhes do item"
+              className="field-textarea"
+              rows={4}
             />
           </div>
         </div>
@@ -398,22 +408,22 @@ export default function VendorStorePage() {
         </div>
       </Card>
 
-      <Card>
-        <h2 className="text-xl font-bold text-gray-900">Cardápio atual</h2>
+      <Card className="rounded-[28px] p-6 sm:p-8">
+        <h2 className="text-xl font-semibold text-[var(--color-secondary)]">Cardápio atual</h2>
         {!vendor?.menuItems?.length ? (
-          <p className="mt-4 text-sm text-gray-500">Nenhum item cadastrado ainda.</p>
+          <p className="mt-4 text-sm text-[var(--color-foreground-soft)]">Nenhum item cadastrado ainda.</p>
         ) : (
           <div className="mt-4 grid gap-3">
             {vendor.menuItems.map((item) => (
               <div
                 key={item.id}
-                className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 md:flex-row md:items-center md:justify-between"
+                className="flex flex-col gap-3 rounded-[24px] border border-[var(--color-line)] p-4 md:flex-row md:items-center md:justify-between"
               >
                 <div>
-                  <p className="font-semibold text-gray-900">{item.name}</p>
-                  {item.description && <p className="text-sm text-gray-500">{item.description}</p>}
-                  <p className="mt-1 text-sm font-semibold text-amber-700">R$ {item.price.toFixed(2)}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="font-semibold text-[var(--color-secondary)]">{item.name}</p>
+                  {item.description && <p className="text-sm text-[var(--color-foreground-soft)]">{item.description}</p>}
+                  <p className="mt-1 text-sm font-semibold text-[var(--color-primary-dark)]">R$ {item.price.toFixed(2)}</p>
+                  <p className="text-xs text-[var(--color-foreground-soft)]">
                     {item.category || 'Sem categoria'} • {item.available ? 'Disponível' : 'Pausado'}
                   </p>
                 </div>

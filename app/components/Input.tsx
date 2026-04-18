@@ -4,12 +4,14 @@ import clsx from 'clsx';
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  hint?: string;
   fullWidth?: boolean;
 }
 
 export function Input({
   label,
   error,
+  hint,
   fullWidth = true,
   className,
   id,
@@ -22,7 +24,7 @@ export function Input({
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className="field-label"
         >
           {label}
         </label>
@@ -32,13 +34,14 @@ export function Input({
         suppressHydrationWarning
         className={clsx(
           // min-h-[44px] satisfies the WCAG 2.5.5 minimum touch-target requirement
-          'w-full px-4 py-3 min-h-[44px] border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all',
-          error && 'border-red-500 focus:ring-red-500',
+          'field-input px-4 py-3 transition-all focus:outline-none',
+          error && 'border-red-400 focus:border-red-400 focus:ring-red-200',
           className,
         )}
         {...props}
       />
-      {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
+      {error && <p className="mt-2 text-sm font-medium text-red-600">{error}</p>}
+      {!error && hint && <p className="mt-2 text-sm text-[var(--color-foreground-soft)]">{hint}</p>}
     </div>
   );
 }
