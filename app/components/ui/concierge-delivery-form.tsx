@@ -215,11 +215,11 @@ export function ConciergeDeliveryForm() {
         <Input
           id="externalCode"
           name="externalCode"
-          label="Código de rastreio"
+          label="Código"
           value={form.externalCode}
           onChange={(e) => setField('externalCode', e.target.value)}
-          placeholder="Ex: BR123456789BR"
-          hint="Ajuda o entregador a identificar sua encomenda na portaria."
+          placeholder="Ex: BR123456789BR ou 0000"
+          hint="Informe o código de recebimento ou rastreio  para ajudar a identificar seu pedido."
           autoComplete="off"
         />
       )}
@@ -238,7 +238,7 @@ export function ConciergeDeliveryForm() {
         </Button>
         <Button type="submit" fullWidth size="lg" loading={loading}>
           <Package className="h-4 w-4" />
-          Solicitar Entrega Interna
+          Solicitar Coleta
         </Button>
       </div>
     </form>
