@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Sora, Space_Mono } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/Header";
+import { LayoutShell } from "@/components/LayoutShell";
 import { RouteFooter } from "@/components/RouteFooter";
 import { ToastContainer } from "@/components/Toast";
 import { BRAND } from "@/lib/brand";
@@ -45,11 +45,8 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-screen flex flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
-        <Header />
+        <LayoutShell>{children}</LayoutShell>
         <ToastContainer />
-        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-          {children}
-        </main>
         <RouteFooter />
       </body>
     </html>

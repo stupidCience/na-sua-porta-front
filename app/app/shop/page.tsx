@@ -9,7 +9,6 @@ import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { NoticeBanner } from '@/components/NoticeBanner';
-import { PageHeader } from '@/components/PageHeader';
 import { vendorsAPI, getApiErrorMessage } from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
 
@@ -81,19 +80,6 @@ export default function ShopPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-8">
-      <PageHeader
-        eyebrow="Comércio do condomínio"
-        title="Guia de restaurantes e lojas"
-        description="Descubra cardápios e serviços com uma vitrine mais clara para pedir sem sair de casa e receber direto no condomínio."
-        actions={
-          <Link href="/deliveries/new">
-            <span className="button-secondary inline-flex min-h-[44px] items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold">
-              Fazer coleta na portaria
-            </span>
-          </Link>
-        }
-      />
-
       <Card className="rounded-[28px] p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>

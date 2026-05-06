@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://na-sua-porta-api.onrender.com/api';
 const API_BASE_URL = rawApiUrl.replace(/\/+$/, '');
 
 const api = axios.create({

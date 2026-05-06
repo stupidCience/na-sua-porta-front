@@ -9,6 +9,8 @@ import {
   Bell,
   Building2,
   ChevronDown,
+  ClipboardList,
+  History,
   LayoutGrid,
   LogOut,
   Menu,
@@ -32,6 +34,7 @@ import { useNotificationsStore } from '@/lib/notificationsStore';
 import { BrandLogo } from './BrandLogo';
 import { Avatar } from './Avatar';
 import { Button } from './Button';
+import { WorkspaceSwitcher } from './layout/workspace-switcher';
 import { useSocket } from '@/lib/useSocket';
 
 type NavLink = {
@@ -45,20 +48,23 @@ type NavLink = {
 
 const ROLE_LINKS: Record<UserRole, NavLink[]> = {
   RESIDENT: [
-    { href: '/deliveries', label: 'Entregas', icon: Package, group: 'primary' },
+    { href: '/morador', label: 'Pedidos', icon: Package, group: 'primary' },
     { href: '/shop', label: 'Lojas', icon: ShoppingBasket, group: 'primary' },
     { href: '/chats', label: 'Mensagens', icon: MessageSquareText, group: 'primary' },
+    { href: '/deliveries', label: 'Histórico', icon: History, group: 'secondary' },
+    { href: '/morador/conta', label: 'Minha conta', icon: UserRound, group: 'secondary', matchPrefix: '/morador/conta' },
   ],
   DELIVERY_PERSON: [
-    { href: '/deliveries/available', label: 'Coletas', icon: Truck, group: 'primary' },
+    { href: '/entregador', label: 'Entregas', icon: Truck, group: 'primary' },
     { href: '/deliveries/my-deliveries', label: 'Minhas rotas', icon: Package, group: 'primary' },
     { href: '/chats', label: 'Mensagens', icon: MessageSquareText, group: 'primary' },
     { href: '/dashboard', label: 'Indicadores', icon: PanelsTopLeft, group: 'secondary' },
   ],
   VENDOR: [
-    { href: '/vendor/orders', label: 'Pedidos', icon: Store, group: 'primary' },
+    { href: '/comercio', label: 'Fila', icon: ClipboardList, group: 'primary' },
     { href: '/vendor/store', label: 'Loja', icon: ShoppingBasket, group: 'primary' },
     { href: '/chats', label: 'Mensagens', icon: MessageSquareText, group: 'primary' },
+    { href: '/vendor/orders', label: 'Histórico', icon: History, group: 'secondary' },
     { href: '/vendor/dashboard', label: 'Indicadores', icon: PanelsTopLeft, group: 'secondary' },
   ],
   CONDOMINIUM_ADMIN: [
@@ -70,9 +76,9 @@ const ROLE_LINKS: Record<UserRole, NavLink[]> = {
 };
 
 const QUICK_ACTIONS: Record<UserRole, NavLink> = {
-  RESIDENT: { href: '/deliveries/new', label: 'Nova coleta', icon: PackagePlus, exact: true },
-  DELIVERY_PERSON: { href: '/deliveries/available', label: 'Buscar coletas', icon: Truck, exact: true },
-  VENDOR: { href: '/vendor/orders', label: 'Acompanhar pedidos', icon: Store, exact: true },
+  RESIDENT: { href: '/deliveries/new', label: 'Fazer Pedido', icon: PackagePlus, exact: true },
+  DELIVERY_PERSON: { href: '/entregador', label: 'Ver coletas', icon: Truck, exact: true },
+  VENDOR: { href: '/comercio', label: 'Ver fila', icon: ClipboardList, exact: true },
   CONDOMINIUM_ADMIN: { href: '/admin', label: 'Abrir painel', icon: Building2, exact: true },
 };
 
@@ -115,10 +121,11 @@ function formatNotificationDate(value: string) {
 export function Header() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout, activeRole } = useAuthStore();
+  const effectiveRole = (activeRole ?? user?.role) as UserRole | undefined;
   const { connectionStatus, on, off } = useSocket(
     user?.id,
-    user?.role,
+    effectiveRole,
     user?.condominiumId,
   );
   const { unreadCount, setUnreadCount, incrementUnread, resetNotifications } =
@@ -322,8 +329,8 @@ export function Header() {
     router.push('/');
   };
 
-  const navLinks = user ? ROLE_LINKS[user.role] ?? [] : [];
-  const quickAction = user ? QUICK_ACTIONS[user.role] : null;
+  const navLinks = user && effectiveRole ? ROLE_LINKS[effectiveRole] ?? [] : [];
+  const quickAction = user && effectiveRole ? QUICK_ACTIONS[effectiveRole] : null;
   const primaryLinks = useMemo(
     () => navLinks.filter((link) => link.group !== 'secondary'),
     [navLinks],
@@ -346,17 +353,22 @@ export function Header() {
   const brandHref = user
     ? isGateRoute
       ? '/ambientes'
-      : getDefaultRouteForUser(user.role, user.isVendor)
+      : getDefaultRouteForUser(effectiveRole, user.isVendor)
     : '/';
-  const accountHref = user?.role === 'CONDOMINIUM_ADMIN' ? '/profile?tab=condominio' : '/profile?tab=perfil';
-  const accountDescription = user?.role === 'CONDOMINIUM_ADMIN'
+  const accountHref =
+    effectiveRole === 'CONDOMINIUM_ADMIN'
+      ? '/profile?tab=condominio'
+      : effectiveRole === 'RESIDENT'
+        ? '/morador/conta/perfil'
+        : '/profile?tab=perfil';
+  const accountDescription = effectiveRole === 'CONDOMINIUM_ADMIN'
     ? 'Dados do condomínio, usuários, convites e relatórios.'
     : 'Dados pessoais, perfis liberados e vínculo com condomínio.';
-  const settingsDescription = user?.role === 'CONDOMINIUM_ADMIN'
+  const settingsDescription = effectiveRole === 'CONDOMINIUM_ADMIN'
     ? 'Alertas de gestão, aprovações e visão inicial do condomínio.'
-    : user?.role === 'VENDOR'
+    : effectiveRole === 'VENDOR'
     ? 'Alertas de pedidos, envio e conversas da loja.'
-    : user?.role === 'DELIVERY_PERSON'
+    : effectiveRole === 'DELIVERY_PERSON'
     ? 'Disponibilidade, novas coletas e preferências da rota.'
     : 'Alertas de pedidos, lojas e entregas neste dispositivo.';
   const firstName = user?.name?.trim().split(' ')[0] ?? 'Olá';
@@ -441,7 +453,7 @@ export function Header() {
     );
   };
   return (
-    <header className="sticky top-0 z-40 border-b border-[var(--color-line)] bg-[rgba(255,255,249,0.82)] backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-[var(--color-line)]/60 bg-[rgba(255,255,249,0.88)] backdrop-blur-xl backdrop-saturate-150">
       {user && connectionStatus !== 'connected' && (
         <div className="border-b border-[rgba(243,183,27,0.35)] bg-[rgba(255,213,58,0.2)] px-4 py-2 text-center text-sm font-semibold text-[var(--color-secondary)]">
           {connectionStatus === 'reconnecting'
@@ -456,7 +468,7 @@ export function Header() {
         </div>
       )}
 
-      <nav className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
+      <nav aria-label="Navegação principal" className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-4 sm:px-6 lg:px-8">
         <Link href={brandHref} className="flex shrink-0 items-center gap-3">
           <BrandLogo size="sm" />
         </Link>
@@ -550,7 +562,7 @@ export function Header() {
           </div>
         )}
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex min-w-0 items-center gap-2">
           {user ? (
             <>
               <div ref={notificationsMenuRef} className="relative">
@@ -641,7 +653,7 @@ export function Header() {
                     setDesktopMoreOpen(false);
                     setNotificationsOpen(false);
                   }}
-                  className="flex min-w-[16rem] max-w-[22rem] items-center gap-3 rounded-[24px] border border-[var(--color-line)] bg-white/85 px-3 py-2.5 pr-4 shadow-[0_18px_36px_rgba(28,25,23,0.07)] transition-colors hover:border-[var(--color-line-strong)] hover:bg-white"
+                  className="flex min-w-0 max-w-[20rem] overflow-hidden items-center gap-3 rounded-[24px] border border-[var(--color-line)] bg-white/85 px-3 py-2.5 pr-4 shadow-[0_18px_36px_rgba(28,25,23,0.07)] transition-colors hover:border-[var(--color-line-strong)] hover:bg-white"
                   aria-expanded={accountMenuOpen}
                   aria-haspopup="menu"
                 >
@@ -652,7 +664,7 @@ export function Header() {
                   <div className="min-w-0 flex-1 text-left">
                     <p className="truncate text-sm font-semibold text-[var(--color-secondary)]">{user.name}</p>
                     <p className="truncate text-xs text-[var(--color-foreground-soft)]">
-                      {getModuleLabel(user.role)}
+                      {getModuleLabel(effectiveRole)}
                       {user.condominiumName ? ` • ${user.condominiumName}` : ' • Minha conta'}
                     </p>
                   </div>
@@ -686,19 +698,9 @@ export function Header() {
                         );
                       })()}
 
-                      <Link
-                        href="/ambientes"
-                        onClick={handleMenuNavigation}
-                        className="flex items-start gap-3 rounded-[22px] px-4 py-3 text-sm transition-colors hover:bg-[var(--color-background-soft)]"
-                      >
-                        <LayoutGrid className="mt-0.5 h-4 w-4 text-[var(--color-primary-dark)]" />
-                        <div>
-                          <p className="font-semibold text-[var(--color-secondary)]">Trocar perfil</p>
-                          <p className="mt-1 text-[13px] leading-5 text-[var(--color-foreground-soft)]">
-                            Escolha como quer entrar na plataforma.
-                          </p>
-                        </div>
-                      </Link>
+                      <div className="px-1 py-1">
+                        <WorkspaceSwitcher />
+                      </div>
 
                       <Link
                         href="/configuracoes"
@@ -789,7 +791,7 @@ export function Header() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-[var(--color-secondary)]">{user.name}</p>
                 <p className="truncate text-xs text-[var(--color-foreground-soft)]">
-                  {getModuleLabel(user.role)}
+                  {getModuleLabel(effectiveRole)}
                   {user.condominiumName ? ` • ${user.condominiumName}` : ' • Minha conta'}
                 </p>
               </div>

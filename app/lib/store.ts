@@ -89,10 +89,12 @@ export interface Delivery {
 interface AuthStore {
   user: User | null;
   token: string | null;
+  activeRole: UserRole | null;
   isAuthenticated: boolean;
   hasHydrated: boolean;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
+  setActiveRole: (role: UserRole) => void;
   setHasHydrated: (hasHydrated: boolean) => void;
   logout: () => void;
 }
@@ -117,6 +119,7 @@ export const useAuthStore = create<AuthStore>()(
     (set) => ({
       user: null,
       token: null,
+      activeRole: null,
       isAuthenticated: false,
       hasHydrated: false,
 
@@ -131,6 +134,11 @@ export const useAuthStore = create<AuthStore>()(
           token,
         }),
 
+      setActiveRole: (role) =>
+        set({
+          activeRole: role,
+        }),
+
       setHasHydrated: (hasHydrated) =>
         set({
           hasHydrated,
@@ -140,6 +148,7 @@ export const useAuthStore = create<AuthStore>()(
         set({
           user: null,
           token: null,
+          activeRole: null,
           isAuthenticated: false,
         }),
     }),
@@ -149,6 +158,7 @@ export const useAuthStore = create<AuthStore>()(
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        activeRole: state.activeRole,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {

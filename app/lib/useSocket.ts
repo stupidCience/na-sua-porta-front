@@ -22,9 +22,9 @@ type SocketLike = {
   };
 };
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://na-sua-porta-api.onrender.com/api';
 const inferredSocketUrl = apiUrl.replace(/\/api\/?$/, '');
-const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || inferredSocketUrl;
+const SOCKET_SERVER_URL = process.env.NEXT_PUBLIC_SOCKET_URL || inferredSocketUrl || 'https://na-sua-porta-api.onrender.com';
 const SOCKET_PATH = process.env.NEXT_PUBLIC_SOCKET_PATH || '/socket.io';
 
 let sharedSocket: SocketLike | null = null;
@@ -87,6 +87,7 @@ export function useSocket(userId?: string, role?: string, condominiumId?: string
         sharedSocket = io(SOCKET_SERVER_URL, {
           path: SOCKET_PATH,
           transports: ['polling', 'websocket'],
+          upgrade: false,
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionDelayMax: 5000,

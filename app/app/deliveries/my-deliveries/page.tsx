@@ -8,7 +8,6 @@ import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
 import { Input } from '@/components/Input';
 import { NoticeBanner } from '@/components/NoticeBanner';
-import { PageHeader } from '@/components/PageHeader';
 import { StatusBadge } from '@/components/StatusBadge';
 import { ProgressStepper } from '@/components/ProgressStepper';
 import { Avatar } from '@/components/Avatar';
@@ -261,27 +260,6 @@ export default function MyDeliveriesPage() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-8 mobile-safe-bottom">
-      <PageHeader
-        eyebrow="Operação em andamento"
-        title="Minhas entregas"
-        description="Acompanhe coletas em andamento, confirme retiradas e conclua cada entrega com uma leitura mais objetiva da sua rota."
-        meta={
-          <>
-            <span className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-medium text-[var(--color-secondary)]">
-              {activeDeliveries.length} em andamento
-            </span>
-            {unreadDeliveryCount > 0 && (
-              <span className="rounded-full border border-[rgba(24,49,71,0.12)] bg-[rgba(24,49,71,0.06)] px-3 py-1.5 font-medium text-[var(--color-secondary)]">
-                {unreadDeliveryCount} resposta{unreadDeliveryCount !== 1 ? 's' : ''} nova{unreadDeliveryCount !== 1 ? 's' : ''}
-              </span>
-            )}
-            <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-1.5 font-medium text-[var(--color-foreground-soft)]">
-              {completedDeliveries.length} concluída{completedDeliveries.length !== 1 ? 's' : ''}
-            </span>
-          </>
-        }
-      />
-
       {connectionStatus === 'reconnecting' && (
         <NoticeBanner tone="warning">
           Atualizando a lista. Suas entregas aparecem com os dados mais recentes em instantes.

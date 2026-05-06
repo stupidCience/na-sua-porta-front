@@ -13,6 +13,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { Avatar } from '@/components/Avatar';
 import { StarRating } from '@/components/StarRating';
 import { ProgressStepper } from '@/components/ProgressStepper';
+import { DeliveryMetrics } from './_components/delivery-metrics';
 import { deliveriesAPI, getApiErrorMessage, notificationsAPI } from '@/lib/api';
 import { loadOperationalChats, type OperationalChatSummary } from '@/lib/chatUnread';
 import { useNotificationsStore } from '@/lib/notificationsStore';
@@ -334,31 +335,17 @@ export default function DeliveriesPage() {
         eyebrow="Pedidos e entregas"
         title="Minhas entregas"
         description="Acompanhe suas compras e coletas com uma leitura clara do andamento, da retirada à chegada no condomínio."
-        meta={
-          <>
-            {user?.role === 'RESIDENT' && (
-              <span className="rounded-full border border-[rgba(26,166,75,0.18)] bg-[rgba(26,166,75,0.08)] px-3 py-1.5 font-medium text-[var(--color-primary-dark)]">
-                {onlineDeliveryPeople} entregadores online
-              </span>
-            )}
-            <span className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-medium text-[var(--color-secondary)]">
-              {visibleDeliveries.length} entrega{visibleDeliveries.length !== 1 ? 's' : ''} ativa{visibleDeliveries.length !== 1 ? 's' : ''}
-            </span>
-            {user?.role === 'RESIDENT' && residentUnreadChatCount > 0 && (
-              <span className="rounded-full border border-[rgba(24,49,71,0.12)] bg-[rgba(24,49,71,0.06)] px-3 py-1.5 font-medium text-[var(--color-secondary)]">
-                {residentUnreadChatCount} mensagem{residentUnreadChatCount !== 1 ? 'ens' : ''} pendente{residentUnreadChatCount !== 1 ? 's' : ''} no chat
-              </span>
-            )}
-            <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-1.5 font-medium text-[var(--color-foreground-soft)]">
-              Histórico total: {deliveries.length}
-            </span>
-          </>
-        }
         actions={
           <Link href="/deliveries/new" className="hidden md:block">
-            <Button size="lg">Solicitar coleta</Button>
+            <Button size="lg">Nova entrega</Button>
           </Link>
         }
+      />
+
+      <DeliveryMetrics
+        activeCount={visibleDeliveries.length}
+        totalCount={deliveries.length}
+        unreadChatCount={residentUnreadChatCount}
       />
 
       {visibleDeliveries.some((d) => d.status === 'REQUESTED') && (
@@ -387,17 +374,18 @@ export default function DeliveriesPage() {
       {visibleDeliveries.length === 0 ? (
         <EmptyState
           icon={PackageOpen}
-          title={hasAnyPreviousOrder ? 'Nenhum pedido em aberto' : 'Nenhuma entrega ainda'}
+          title={hasAnyPreviousOrder ? 'Nenhum pedido em andamento' : 'Nenhuma entrega ainda'}
           description={
             hasAnyPreviousOrder
               ? 'Você já possui pedidos no histórico. Assim que abrir uma nova solicitação, ela aparecerá aqui.'
-              : 'Comece seu uso com uma primeira coleta em poucos segundos.'
+              : 'Que tal pedir algo nas lojas do condomínio ou solicitar uma entrega? É rápido e fácil.'
           }
           actions={
             <Link href="/deliveries/new">
-              <Button size="lg">{hasAnyPreviousOrder ? 'Solicitar nova coleta' : 'Fazer primeira coleta'}</Button>
+              <Button size="lg">{hasAnyPreviousOrder ? 'Nova entrega' : 'Fazer primeiro pedido'}</Button>
             </Link>
           }
+          className="border-2 border-dashed border-[var(--color-line)] bg-[var(--color-background-soft)]"
         />
       ) : (
         <div className="grid gap-4">
@@ -628,7 +616,7 @@ export default function DeliveriesPage() {
       )}
 
       <Link href="/deliveries/new" className="floating-safe-bottom fixed right-4 z-40 md:hidden">
-        <Button size="lg" className="shadow-lg">Solicitar coleta</Button>
+        <Button size="lg" className="shadow-lg active:scale-95">Nova entrega</Button>
       </Link>
     </div>
   );

@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import clsx from 'clsx';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
@@ -17,9 +18,7 @@ import {
   Truck,
   UserRound,
 } from 'lucide-react';
-import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
-import { PageHeader } from '@/components/PageHeader';
 import { getModuleLabel } from '@/lib/accountModules';
 import { useAuthStore, type UserRole } from '@/lib/store';
 
@@ -77,7 +76,7 @@ const GENERAL_SETTINGS: ToggleSetting[] = [
 
 const ROLE_SETTINGS: Record<UserRole, SettingsSection> = {
   RESIDENT: {
-    title: 'Pedidos e avisos',
+    title: 'Morador',
     description: 'Ajustes para compras, atualizações de entrega e avisos do condomínio.',
     items: [
       {
@@ -107,7 +106,7 @@ const ROLE_SETTINGS: Record<UserRole, SettingsSection> = {
     ],
   },
   DELIVERY_PERSON: {
-    title: 'Coletas e rota',
+    title: 'Entregador',
     description: 'Ajustes para disponibilidade, novas coletas e rotina de entrega.',
     items: [
       {
@@ -147,7 +146,7 @@ const ROLE_SETTINGS: Record<UserRole, SettingsSection> = {
     ],
   },
   VENDOR: {
-    title: 'Pedidos e atendimento',
+    title: 'Comércio',
     description: 'Ajustes para pedidos, despacho e conversas com moradores.',
     items: [
       {
@@ -185,7 +184,7 @@ const ROLE_SETTINGS: Record<UserRole, SettingsSection> = {
     ],
   },
   CONDOMINIUM_ADMIN: {
-    title: 'Aprovações e acompanhamento',
+    title: 'Administrador',
     description: 'Ajustes para aprovações, usuários e visão geral do condomínio.',
     items: [
       {
@@ -225,17 +224,10 @@ const ROLE_SETTINGS: Record<UserRole, SettingsSection> = {
 };
 
 function readToggleValue(setting: ToggleSetting) {
-  if (typeof window === 'undefined') {
-    return setting.defaultValue;
-  }
-
-  const storedValue = localStorage.getItem(setting.storageKey);
-
-  if (storedValue === null) {
-    return setting.defaultValue;
-  }
-
-  return storedValue === (setting.trueValue ?? 'on');
+  if (typeof window === 'undefined') return setting.defaultValue;
+  const stored = localStorage.getItem(setting.storageKey);
+  if (stored === null) return setting.defaultValue;
+  return stored === (setting.trueValue ?? 'on');
 }
 
 function writeToggleValue(setting: ToggleSetting, value: boolean) {
@@ -245,6 +237,32 @@ function writeToggleValue(setting: ToggleSetting, value: boolean) {
   );
 }
 
+/* ── Switch ───────────────────────────────────────────────────────────────── */
+function Switch({ checked, onChange, id }: { checked: boolean; onChange: () => void; id: string }) {
+  return (
+    <button
+      id={id}
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={onChange}
+      className={clsx(
+        'relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-all duration-300',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2',
+        checked ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-line-strong)]',
+      )}
+    >
+      <span
+        className={clsx(
+          'pointer-events-none block h-5 w-5 rounded-full bg-white shadow-md ring-0 transition-transform duration-300',
+          checked ? 'translate-x-5' : 'translate-x-0.5',
+        )}
+      />
+    </button>
+  );
+}
+
+/* ── ToggleRow ────────────────────────────────────────────────────────────── */
 function ToggleRow({
   setting,
   checked,
@@ -257,49 +275,62 @@ function ToggleRow({
   const Icon = setting.icon;
 
   return (
-    <button
-      type="button"
-      onClick={() => onToggle(setting)}
-      className="flex w-full items-center justify-between gap-4 rounded-[24px] border border-[var(--color-line)] bg-[var(--color-background-soft)] px-4 py-4 text-left transition-colors hover:border-[var(--color-line-strong)] hover:bg-white"
+    <div
+      className={clsx(
+        'flex w-full items-center justify-between gap-4 rounded-[24px] border px-4 py-4 transition-all duration-200',
+        checked
+          ? 'border-[rgba(26,166,75,0.3)] bg-[rgba(26,166,75,0.04)] backdrop-blur-md'
+          : 'border-[var(--color-line)] bg-white/60 backdrop-blur-md hover:border-[var(--color-line-strong)] hover:bg-white/80',
+      )}
     >
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-[var(--color-primary-dark)] shadow-[0_10px_20px_rgba(28,25,23,0.06)]">
-          <Icon className="h-5 w-5" />
-        </div>
-        <div>
-          <p className="text-sm font-semibold text-[var(--color-secondary)]">{setting.label}</p>
-          <p className="mt-1 text-sm leading-6 text-[var(--color-foreground-soft)]">{setting.description}</p>
-        </div>
-      </div>
-
-      <div
-        className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-          checked ? 'bg-[var(--color-secondary)]' : 'bg-[var(--color-line-strong)]'
-        }`}
+      <label
+        htmlFor={setting.id}
+        className="flex min-w-0 cursor-pointer items-start gap-3"
       >
-        <span
-          className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            checked ? 'translate-x-6' : 'translate-x-1'
-          }`}
-        />
-      </div>
-    </button>
+        <div
+          className={clsx(
+            'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-sm transition-colors duration-200',
+            checked
+              ? 'bg-[rgba(26,166,75,0.12)] text-[var(--color-primary-dark)]'
+              : 'bg-white text-[var(--color-foreground-soft)]',
+          )}
+        >
+          <Icon className="h-4.5 w-4.5 h-[18px] w-[18px]" />
+        </div>
+        <div className="min-w-0">
+          <p className={clsx(
+            'text-sm font-semibold transition-colors duration-200',
+            checked ? 'text-[var(--color-primary-dark)]' : 'text-[var(--color-secondary)]',
+          )}>
+            {setting.label}
+          </p>
+          <p className="mt-0.5 text-sm leading-6 text-[var(--color-foreground-soft)]">
+            {setting.description}
+          </p>
+        </div>
+      </label>
+
+      <Switch
+        id={setting.id}
+        checked={checked}
+        onChange={() => onToggle(setting)}
+      />
+    </div>
   );
 }
 
+/* ── Page ─────────────────────────────────────────────────────────────────── */
 export default function ConfiguracoesPage() {
   const router = useRouter();
   const { user, hasHydrated } = useAuthStore();
   const [values, setValues] = useState<Record<string, boolean>>({});
+  const [activeTab, setActiveTab] = useState(0);
 
-  const sections = useMemo(() => {
-    if (!user) {
-      return [] as SettingsSection[];
-    }
-
+  const sections = useMemo((): SettingsSection[] => {
+    if (!user) return [];
     return [
       {
-        title: 'Uso no dispositivo',
+        title: 'Geral',
         description: 'Ajustes compartilhados entre os perfis que você abrir neste dispositivo.',
         items: GENERAL_SETTINGS,
       },
@@ -310,38 +341,22 @@ export default function ConfiguracoesPage() {
   const storedValues = useMemo(
     () =>
       Object.fromEntries(
-        sections.flatMap((section) =>
-          section.items.map((setting) => [setting.id, readToggleValue(setting)]),
-        ),
+        sections.flatMap((s) => s.items.map((setting) => [setting.id, readToggleValue(setting)])),
       ),
     [sections],
   );
 
-  const resolvedValues = useMemo(
-    () => ({
-      ...storedValues,
-      ...values,
-    }),
-    [storedValues, values],
-  );
+  const resolvedValues = useMemo(() => ({ ...storedValues, ...values }), [storedValues, values]);
 
   useEffect(() => {
-    if (!hasHydrated) {
-      return;
-    }
-
-    if (!user) {
-      router.push('/login');
-    }
+    if (!hasHydrated) return;
+    if (!user) router.push('/login');
   }, [hasHydrated, router, user]);
 
   const handleToggle = (setting: ToggleSetting) => {
-    const nextValue = !(resolvedValues[setting.id] ?? setting.defaultValue);
-    writeToggleValue(setting, nextValue);
-    setValues((current) => ({
-      ...current,
-      [setting.id]: nextValue,
-    }));
+    const next = !(resolvedValues[setting.id] ?? setting.defaultValue);
+    writeToggleValue(setting, next);
+    setValues((curr) => ({ ...curr, [setting.id]: next }));
   };
 
   if (!hasHydrated || !user) {
@@ -352,79 +367,88 @@ export default function ConfiguracoesPage() {
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
   const accountHref = user.role === 'CONDOMINIUM_ADMIN' ? '/profile?tab=condominio' : '/profile?tab=perfil';
+  const activeSection = sections[activeTab];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 pb-8">
-      <PageHeader
-        eyebrow="Configurações"
-        title="Configurações do dispositivo"
-        description="Ajuste alertas, confirmações e a forma como este acesso funciona no seu dispositivo. Dados cadastrais, segurança e vínculo com condomínio continuam em Minha conta."
-        meta={
-          <>
-            <span className="rounded-full border border-[var(--color-line)] bg-white px-3 py-1.5 font-medium text-[var(--color-secondary)]">
-              {getModuleLabel(user.role)}
-            </span>
-            <span className="rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-1.5 font-medium text-[var(--color-foreground-soft)]">
-              Salvas neste dispositivo
-            </span>
-          </>
-        }
-        actions={
-          <>
-            <Link href="/ambientes">
-              <Button variant="secondary" size="sm">
-                <LayoutGrid className="h-4 w-4" />
-                Trocar perfil
-              </Button>
-            </Link>
-            <Link href={accountHref}>
-              <Button size="sm">
-                <UserRound className="h-4 w-4" />
-                Minha conta
-              </Button>
-            </Link>
-          </>
-        }
-      />
+    <div className="mx-auto max-w-3xl space-y-5 pb-8">
 
-      <Card className="rounded-[30px] p-6 sm:p-7">
-        <div className="max-w-3xl">
-          <h2 className="text-2xl font-semibold text-[var(--color-secondary)]">Preferências deste acesso</h2>
-          <p className="mt-3 text-sm leading-6 text-[var(--color-foreground-soft)]">
-            As opções abaixo ficam salvas neste dispositivo e ajustam como o perfil atual organiza alertas, confirmações e prioridades no uso diário.
-          </p>
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="eyebrow">Configurações</p>
+          <h1 className="mt-1 text-2xl font-bold text-[var(--color-secondary)]">
+            Preferências do dispositivo
+          </h1>
         </div>
-
-        <div className="mt-8 space-y-8">
-          {sections.map((section, index) => (
-            <section
-              key={section.title}
-              className={index === 0 ? undefined : 'border-t border-[var(--color-line)] pt-8'}
-            >
-              <div className="max-w-3xl">
-                <h3 className="text-lg font-semibold text-[var(--color-secondary)]">{section.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--color-foreground-soft)]">{section.description}</p>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {section.items.map((setting) => (
-                  <ToggleRow
-                    key={setting.id}
-                    setting={setting}
-                    checked={resolvedValues[setting.id] ?? setting.defaultValue}
-                    onToggle={handleToggle}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+        <div className="flex items-center gap-2">
+          <span className="rounded-full border border-[var(--color-line)] bg-white/70 px-3 py-1.5 text-xs font-medium text-[var(--color-foreground-soft)]">
+            {getModuleLabel(user.role)}
+          </span>
+          <span className="hidden rounded-full border border-[var(--color-line)] bg-[var(--color-background-soft)] px-3 py-1.5 text-xs font-medium text-[var(--color-foreground-soft)] sm:inline-flex">
+            Salvas neste dispositivo
+          </span>
+          <Link
+            href="/ambientes"
+            className="flex min-h-[36px] items-center gap-1.5 rounded-2xl border border-[var(--color-line)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--color-secondary)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Trocar perfil
+          </Link>
+          <Link
+            href={accountHref}
+            className="flex min-h-[36px] items-center gap-1.5 rounded-2xl border border-[var(--color-line)] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[var(--color-secondary)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+          >
+            <UserRound className="h-3.5 w-3.5" />
+            Minha conta
+          </Link>
         </div>
-      </Card>
+      </div>
+
+      {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+      <div className="flex gap-1 rounded-2xl border border-[var(--color-line)] bg-white/70 p-1 backdrop-blur-sm">
+        {sections.map((section, index) => (
+          <button
+            key={section.title}
+            type="button"
+            onClick={() => setActiveTab(index)}
+            className={clsx(
+              'flex flex-1 items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-200',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-inset',
+              activeTab === index
+                ? 'bg-[var(--color-secondary)] text-white shadow-sm'
+                : 'text-[var(--color-foreground-soft)] hover:text-[var(--color-secondary)]',
+            )}
+          >
+            {section.title}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Active section ──────────────────────────────────────────────── */}
+      {activeSection && (
+        <Card className="rounded-[28px] p-5 sm:p-7">
+          <div className="mb-5 border-b border-[var(--color-line)] pb-5">
+            <h2 className="text-lg font-semibold text-[var(--color-secondary)]">
+              {activeSection.title}
+            </h2>
+            <p className="mt-1 text-sm leading-6 text-[var(--color-foreground-soft)]">
+              {activeSection.description}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {activeSection.items.map((setting) => (
+              <ToggleRow
+                key={setting.id}
+                setting={setting}
+                checked={resolvedValues[setting.id] ?? setting.defaultValue}
+                onToggle={handleToggle}
+              />
+            ))}
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
